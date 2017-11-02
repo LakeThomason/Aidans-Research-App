@@ -20,6 +20,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.os.Bundle;
@@ -29,6 +30,8 @@ import android.widget.Toast;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.android.BtleService;
 import com.mbientlab.metawear.module.Led;
+
+import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,17 +44,21 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     //Datamembers
     private TextView mHelpText;
-    private Button mMetaWearButton;
-    private Button mPolarButton;
-    private Button mBlink;
     private ListView mBluetoothList;
+    private Button mContinueButton;
+    private CheckBox mMetawearCheckBox;
+    private CheckBox mPolarH7;
     private MetaWearBoard board;
+    private TextView mRefreshButton;
 
-    BluetoothAdapter mBluetoothAdapter;
+    private BluetoothAdapter mBluetoothAdapter;
+    private Toast myToast;
+
     private final static int REQUEST_ENABLE_BT = 2;
     private final static int REQUEST_ENABLE_LOC = 3;
     private final static int REQUEST_ENABLE_BTADMIN = 4;
 
+    private List<String> macAddressList;
     private List<String> deviceList;
     private ArrayAdapter<String> arrayAdapter;
 
@@ -62,71 +69,43 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        //request permissions
+        requestPermissions();
+
+        //get the adapter
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+        //prepare visual elements
         mHelpText =  (TextView) findViewById(R.id.HelpText);
+        mRefreshButton = (TextView) findViewById(R.id.refreshText);
         mBluetoothList = (ListView) findViewById(R.id.LIbluetoothList);
-        mBlink = (Button) findViewById(R.id.button3);
+        mMetawearCheckBox = (CheckBox) findViewById(R.id.metawearCheckBox);
+        mContinueButton = (Button) findViewById(R.id.continueButton);
+        //TODO make the onclick for continue button
+        //TODO make activity switch function when both device are connected
 
         //prepare the listview contents for button onclick
         deviceList = new ArrayList<String>();
-        arrayAdapter = new ArrayAdapter<String>
-                (this, android.R.layout.simple_list_item_1, deviceList);
+        macAddressList = new ArrayList<String>();
+        arrayAdapter = new ArrayAdapter<String> (this, android.R.layout.simple_list_item_1, deviceList);
         mBluetoothList.setAdapter(arrayAdapter);
 
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        mMetaWearButton = (Button) findViewById(R.id.button);
-        mBlink.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                Led led;
-                if ((led= board.getModule(Led.class)) != null) {
-                    led.editPattern(Led.Color.BLUE, Led.PatternPreset.BLINK)
-                            .repeatCount((byte) 10)
-                            .commit();
-                    led.play();
-                }
-            }
-        });
-        mMetaWearButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                //if were already discovering, cancel it first
-                if (mBluetoothAdapter.isDiscovering()) {
-                    mBluetoothAdapter.cancelDiscovery();
-                }
-                mBluetoothAdapter.startDiscovery();
-                mHelpText.setText("Discovery should have started...");
-                Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-
-//                if (pairedDevices.size() > 0) {
-//                    // There are paired devices. Get the name and address of each paired device.
-//                    for (BluetoothDevice device : pairedDevices) {
-//                        String deviceName = device.getName();
-//                        String deviceHardwareAddress = device.getAddress(); // MAC address
-//                        deviceList.add(deviceName + "        " + deviceHardwareAddress);
-//                    }
-//                    arrayAdapter.notifyDataSetChanged();
-//                }
-            }
-        });
-        mPolarButton = (Button) findViewById(R.id.button2);
-        mPolarButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-
-            }
-        });
+        //prepare for listitem clicks
         mBluetoothList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String device = deviceList.get(position);
-                Toast.makeText(MainActivity.this, "Trying to connect with " + device, Toast.LENGTH_SHORT).show();
-                retrieveBoard(device);
+                listItemClicked(position);
             }
         });
-
+        mRefreshButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                beginDiscovery();
+                makeToast("Refreshing bluetooth list..");
+            }
+        });
         // Bind the service when the activity is created
-        getApplicationContext().bindService(new Intent(this, BtleService.class),
-                this, Context.BIND_AUTO_CREATE);
-
-        //request permissions
-        requestPermissions();
+        getApplicationContext().bindService(new Intent(this, BtleService.class), this, Context.BIND_AUTO_CREATE);
 
         // Register for broadcasts when a device is discovered.
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
@@ -137,13 +116,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     protected void onResume() {
         super.onResume();
         if (mBluetoothAdapter == null) {
-            mHelpText.setText("El no supporto el tootho");
+            mHelpText.setText("Bluetooth is not supported on this device");
             return;
         }
         if (!mBluetoothAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
+        beginDiscovery();
     }
 
     public void requestPermissions(){
@@ -181,21 +161,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         final BluetoothDevice remoteDevice=
                 btManager.getAdapter().getRemoteDevice(macAddress);
-
-        // Create a MetaWear board object for the Bluetooth Device
         board = serviceBinder.getMetaWearBoard(remoteDevice);
-        //left off here, gl
-        board.connectAsync().continueWith(new Continuation<Void, Void>() {
-            @Override
-            public Void then(Task<Void> task) throws Exception {
-                if (task.isFaulted()) {
-                    Log.i("MainActivity", "Failed to connect");
-                } else {
-                    Log.i("MainActivity", "Connected");
-                }
-                return null;
-            }
-        });
     }
 
     public void getPermissions() {
@@ -215,6 +181,70 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
+    public void listItemClicked(int position) {
+        String deviceName;
+        String deviceAddress;
+        if (deviceList != null && macAddressList != null){
+            deviceName = deviceList.get(position);
+            deviceAddress = macAddressList.get(position);
+            connectToMetawearDevice(deviceAddress, deviceName);
+        }
+        //TODO check what kind of device is being clicked
+        //TODO check if the device is already connected
+        //TODO connect to the device if the above are false
+    }
+
+    public void blinkLed(Led.Color color, int count) {
+        Led led;
+        if ((led= board.getModule(Led.class)) != null) {
+            led.editPattern(color, Led.PatternPreset.BLINK)
+                    .repeatCount((byte) count)
+                    .commit();
+            led.play();
+        }
+    }
+
+    public void beginDiscovery() {
+        //if were already discovering, cancel it first
+        if (mBluetoothAdapter.isDiscovering()) {
+            mBluetoothAdapter.cancelDiscovery();
+        }
+        mBluetoothAdapter.startDiscovery();
+    }
+
+    public void connectToMetawearDevice(String macAddress, final String deviceName) {
+        //makeToast("Trying to connect with " + deviceName);
+        retrieveBoard(macAddress);
+        boolean connected;
+
+        //Establishes a Bluetooth Low Energy connection to the MetaWear board
+        board.connectAsync().continueWith(new Continuation<Void, Void>() {
+            @Override
+            public Void then(Task<Void> task) throws Exception {
+                if (task.isFaulted()) {
+                    Log.i("MainActivity", "Failed to connect");
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        public void run() {
+                            makeToast("Failed to connect to " + deviceName);
+                        }
+                    });
+                } else {
+                    Log.i("MainActivity", "Connected");
+                    blinkLed(Led.Color.GREEN, 10);
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        public void run() {
+                            makeToast("Connected to " + deviceName);
+                            mMetawearCheckBox.setChecked(true);
+                        }
+                    });
+                }
+                return null;
+            }
+        });
+    }
+
+    //TODO make a function that checks if a device has been d/c'd.. Metawear uses onClientConnParamsChanged()
+
     // Create a BroadcastReceiver for ACTION_FOUND.
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
@@ -225,13 +255,23 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 String deviceName = device.getName();
                 String deviceHardwareAddress = device.getAddress(); // MAC address
-                deviceList.add(deviceHardwareAddress);
-                arrayAdapter.notifyDataSetChanged();
+                //make sure its not already in the list if discovery is started again
+                if (!deviceList.contains(deviceName)) {
+                    deviceList.add(deviceName);
+                    macAddressList.add(deviceHardwareAddress);
+                    arrayAdapter.notifyDataSetChanged();
+                }
             }
         }
     };
 
-
+    public void makeToast(String text){
+        if (myToast != null) {
+            myToast.cancel();
+        }
+        myToast = Toast.makeText(MainActivity.this, text, Toast.LENGTH_SHORT);
+        myToast.show();
+    }
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
