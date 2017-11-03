@@ -51,12 +51,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Select the Metawear device"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.376"
-        app:layout_constraintHorizontal_bias="0.075" />
+        app:layout_constraintVertical_bias="0.955"
+        app:layout_constraintHorizontal_bias="0.137"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/LIbluetoothList" />
 
     <ListView
         android:id="@+id/LIbluetoothList"
@@ -97,7 +99,8 @@
         android:layout_marginRight="8dp"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginTop="124dp" />
+        android:layout_marginTop="111dp"
+        app:layout_constraintHorizontal_bias="0.501" />
 
     <TextView
         android:id="@+id/refreshText"
@@ -108,6 +111,9 @@
         android:textColor="@android:color/holo_blue_light"
         android:layout_marginRight="16dp"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginTop="186dp" />
+        app:layout_constraintLeft_toRightOf="@+id/HelpText"
+        android:layout_marginLeft="8dp"
+        app:layout_constraintHorizontal_bias="0.669"
+        android:layout_marginBottom="15dp"
+        app:layout_constraintBottom_toTopOf="@+id/LIbluetoothList" />
 </android.support.constraint.ConstraintLayout>

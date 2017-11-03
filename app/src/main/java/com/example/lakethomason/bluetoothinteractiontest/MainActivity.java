@@ -3,7 +3,9 @@ package com.example.lakethomason.bluetoothinteractiontest;
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothHealth;
 import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -50,6 +52,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private CheckBox mPolarH7;
     private MetaWearBoard board;
     private TextView mRefreshButton;
+    private String mDeviceToBeConnected;
 
     private BluetoothAdapter mBluetoothAdapter;
     private Toast myToast;
@@ -64,6 +67,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     private BtleService.LocalBinder serviceBinder;
 
+    private BluetoothHealth mPolarDevice;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,11 +80,15 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         //get the adapter
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
+        //set the device to be connected first
+        mDeviceToBeConnected = "Metawear";
+
         //prepare visual elements
         mHelpText =  (TextView) findViewById(R.id.HelpText);
         mRefreshButton = (TextView) findViewById(R.id.refreshText);
         mBluetoothList = (ListView) findViewById(R.id.LIbluetoothList);
         mMetawearCheckBox = (CheckBox) findViewById(R.id.metawearCheckBox);
+        mPolarH7 = (CheckBox) findViewById(R.id.polarh7CheckBox);
         mContinueButton = (Button) findViewById(R.id.continueButton);
         //TODO make the onclick for continue button
         //TODO make activity switch function when both device are connected
@@ -110,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         // Register for broadcasts when a device is discovered.
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
         registerReceiver(mReceiver, filter);
+        mBluetoothAdapter.getProfileProxy(MainActivity.this, mProfileListener, BluetoothProfile.HEALTH);
     }
 
     @Override
@@ -117,7 +127,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         super.onResume();
         if (mBluetoothAdapter == null) {
             mHelpText.setText("Bluetooth is not supported on this device");
-            return;
+            System.exit(0);
         }
         if (!mBluetoothAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -182,12 +192,19 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void listItemClicked(int position) {
-        String deviceName;
-        String deviceAddress;
+        String deviceName, deviceAddress;
         if (deviceList != null && macAddressList != null){
             deviceName = deviceList.get(position);
             deviceAddress = macAddressList.get(position);
-            connectToMetawearDevice(deviceAddress, deviceName);
+
+            makeToast("Trying to connect with " + deviceName);
+
+            if (mDeviceToBeConnected.equals("Metawear")){
+                connectToMetawearDevice(deviceAddress, deviceName);
+            }
+            else if (mDeviceToBeConnected.equals("PolarH7")){
+                connectToPolarDevice(deviceAddress, deviceName);
+            }
         }
         //TODO check what kind of device is being clicked
         //TODO check if the device is already connected
@@ -212,10 +229,21 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         mBluetoothAdapter.startDiscovery();
     }
 
-    public void connectToMetawearDevice(String macAddress, final String deviceName) {
-        //makeToast("Trying to connect with " + deviceName);
+    public void connectToPolarDevice(final String deviceAddress, final String deviceName){
+//        MainActivity.this.runOnUiThread(new Runnable() {
+//            public void run() {
+//                makeToast("Connected to PolarH7");
+//                mPolarH7.setChecked(true);
+//                mHelpText.setText("Press continue");
+//            }
+//        });
+        //TODO finalize connection to PolarH7
+        //TODO change mHelpText to just say connect to devices since the polar device tries to connect automatically
+
+    }
+
+    public void connectToMetawearDevice(final String macAddress, final String deviceName) {
         retrieveBoard(macAddress);
-        boolean connected;
 
         //Establishes a Bluetooth Low Energy connection to the MetaWear board
         board.connectAsync().continueWith(new Continuation<Void, Void>() {
@@ -235,6 +263,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                         public void run() {
                             makeToast("Connected to " + deviceName);
                             mMetawearCheckBox.setChecked(true);
+                            mHelpText.setText("Select the PolarH7 device");
+                            mDeviceToBeConnected = "PolarH7";
                         }
                     });
                 }
@@ -272,6 +302,19 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         myToast = Toast.makeText(MainActivity.this, text, Toast.LENGTH_SHORT);
         myToast.show();
     }
+
+    private BluetoothProfile.ServiceListener mProfileListener = new BluetoothProfile.ServiceListener() {
+        public void onServiceConnected(int profile, BluetoothProfile proxy) {
+            if (profile == BluetoothProfile.HEALTH) {
+                mPolarDevice = (BluetoothHealth) proxy;
+            }
+        }
+        public void onServiceDisconnected(int profile) {
+            if (profile == BluetoothProfile.HEALTH) {
+                mPolarDevice = null;
+            }
+        }
+    };
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
