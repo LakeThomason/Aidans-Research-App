@@ -32,6 +32,7 @@ import android.widget.Toast;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.android.BtleService;
 import com.mbientlab.metawear.module.Led;
+import com.mbientlab.metawear.module.Logging;
 
 import org.w3c.dom.Text;
 
@@ -43,61 +44,35 @@ import bolts.Continuation;
 import bolts.Task;
 
 public class MainActivity extends AppCompatActivity implements ServiceConnection {
-
-    //Datamembers
     private TextView mHelpText;
     private ListView mBluetoothList;
     private Button mContinueButton;
+    private Button mLogButton;
     private CheckBox mMetawearCheckBox;
     private CheckBox mPolarH7;
     private MetaWearBoard board;
     private TextView mRefreshButton;
-    private String mDeviceToBeConnected;
-
     private BluetoothAdapter mBluetoothAdapter;
     private Toast myToast;
-
     private final static int REQUEST_ENABLE_BT = 2;
     private final static int REQUEST_ENABLE_LOC = 3;
     private final static int REQUEST_ENABLE_BTADMIN = 4;
-
     private List<String> macAddressList;
     private List<String> deviceList;
     private ArrayAdapter<String> arrayAdapter;
-
     private BtleService.LocalBinder serviceBinder;
-
     private BluetoothHealth mPolarDevice;
 
+    /***********************************************************************************************
+     * Android life cycle methods
+     **********************************************************************************************/
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        //request permissions
         requestPermissions();
-
-        //get the adapter
+        prepareDataMembers();
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        //set the device to be connected first
-        mDeviceToBeConnected = "Metawear";
-
-        //prepare visual elements
-        mHelpText =  (TextView) findViewById(R.id.HelpText);
-        mRefreshButton = (TextView) findViewById(R.id.refreshText);
-        mBluetoothList = (ListView) findViewById(R.id.LIbluetoothList);
-        mMetawearCheckBox = (CheckBox) findViewById(R.id.metawearCheckBox);
-        mPolarH7 = (CheckBox) findViewById(R.id.polarh7CheckBox);
-        mContinueButton = (Button) findViewById(R.id.continueButton);
-        //TODO make the onclick for continue button
-        //TODO make activity switch function when both device are connected
-
-        //prepare the listview contents for button onclick
-        deviceList = new ArrayList<String>();
-        macAddressList = new ArrayList<String>();
-        arrayAdapter = new ArrayAdapter<String> (this, android.R.layout.simple_list_item_1, deviceList);
-        mBluetoothList.setAdapter(arrayAdapter);
 
         //prepare for listitem clicks
         mBluetoothList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -109,11 +84,19 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         mRefreshButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                deviceList.clear();
+                arrayAdapter.notifyDataSetChanged();
                 beginDiscovery();
                 makeToast("Refreshing bluetooth list..");
             }
         });
-        // Bind the service when the activity is created
+        mLogButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                logButtonClicked();
+            }
+        });
+        // Bind the service when the activity is created (metawear)
         getApplicationContext().bindService(new Intent(this, BtleService.class), this, Context.BIND_AUTO_CREATE);
 
         // Register for broadcasts when a device is discovered.
@@ -125,6 +108,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     @Override
     protected void onResume() {
         super.onResume();
+        //check if device is bluetooth available on device
         if (mBluetoothAdapter == null) {
             mHelpText.setText("Bluetooth is not supported on this device");
             System.exit(0);
@@ -134,6 +118,40 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
         beginDiscovery();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // unregister the ACTION_FOUND receiver.
+        unregisterReceiver(mReceiver);
+        // Unbind the service when the activity is destroyed
+        getApplicationContext().unbindService(this);
+    }
+
+    /***********************************************************************************************
+     * Helper methods
+     **********************************************************************************************/
+    public void prepareDataMembers() {
+        mHelpText =  (TextView) findViewById(R.id.HelpText);
+        mRefreshButton = (TextView) findViewById(R.id.refreshText);
+        mMetawearCheckBox = (CheckBox) findViewById(R.id.metawearCheckBox);
+        mPolarH7 = (CheckBox) findViewById(R.id.polarh7CheckBox);
+        mContinueButton = (Button) findViewById(R.id.continueButton);
+        mLogButton  = (Button) findViewById(R.id.logButton);
+        deviceList = new ArrayList<String>();
+        macAddressList = new ArrayList<String>();
+        mBluetoothList = (ListView) findViewById(R.id.LIbluetoothList);
+        arrayAdapter = new ArrayAdapter<String> (this, android.R.layout.simple_list_item_1, deviceList);
+        mBluetoothList.setAdapter(arrayAdapter);
+    }
+
+    public void beginDiscovery() {
+        //if were already discovering, cancel it first
+        if (mBluetoothAdapter.isDiscovering()) {
+            mBluetoothAdapter.cancelDiscovery();
+        }
+        mBluetoothAdapter.startDiscovery();
     }
 
     public void requestPermissions(){
@@ -148,67 +166,54 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 REQUEST_ENABLE_BTADMIN);
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case REQUEST_ENABLE_BTADMIN: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    return;
-                }
-            }
-            case REQUEST_ENABLE_LOC: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    return;
-                }
-            }
-        }
-    }
-
-    public void retrieveBoard(String macAddress) {
+    public void connectToMetawearDevice(final String macAddress, final String deviceName) {
         final BluetoothManager btManager=
                 (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         final BluetoothDevice remoteDevice=
                 btManager.getAdapter().getRemoteDevice(macAddress);
         board = serviceBinder.getMetaWearBoard(remoteDevice);
+
+        //Establishes a Bluetooth Low Energy connection to the MetaWear board
+        board.connectAsync().continueWith(new Continuation<Void, Void>() {
+            @Override
+            public Void then(Task<Void> task) throws Exception {
+                if (task.isFaulted()) {
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        public void run() {
+                            makeToast("Failed to connect to " + deviceName);
+                        }
+                    });
+                } else {
+                    blinkLed(Led.Color.GREEN, 10);
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        public void run() {
+                            makeToast("Connected to " + deviceName);
+                            mMetawearCheckBox.setChecked(true);
+                            mLogButton.setVisibility(View.VISIBLE);
+                        }
+                    });
+                }
+                return null;
+            }
+        });
+        //set an unexpected disconnect listener
+        board.onUnexpectedDisconnect(new MetaWearBoard.UnexpectedDisconnectHandler() {
+            @Override
+            public void disconnected(int status) {
+                Log.i("MainActivity", "Unexpectedly lost connection: " + status);
+                makeToast("Lost connection to the MetaWear Device");
+                mMetawearCheckBox.setChecked(false);
+            }
+        });
+        //TODO make a function that checks if a device has been d/c'd.. Metawear uses onClientConnParamsChanged()
     }
 
-    public void getPermissions() {
-        // Here, thisActivity is the current activity
-        if (ContextCompat.checkSelfPermission(MainActivity.this,
-                Manifest.permission.BLUETOOTH_ADMIN)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
-                    Manifest.permission.BLUETOOTH_ADMIN)) {
-            } else {
-                ActivityCompat.requestPermissions(MainActivity.this,
-                        new String[]{Manifest.permission.BLUETOOTH_ADMIN},
-                        REQUEST_ENABLE_BTADMIN);
-            }
+    public void makeToast(String text){
+        if (myToast != null) {
+            myToast.cancel();
         }
-    }
-
-    public void listItemClicked(int position) {
-        String deviceName, deviceAddress;
-        if (deviceList != null && macAddressList != null){
-            deviceName = deviceList.get(position);
-            deviceAddress = macAddressList.get(position);
-
-            makeToast("Trying to connect with " + deviceName);
-
-            if (mDeviceToBeConnected.equals("Metawear")){
-                connectToMetawearDevice(deviceAddress, deviceName);
-            }
-            else if (mDeviceToBeConnected.equals("PolarH7")){
-                connectToPolarDevice(deviceAddress, deviceName);
-            }
-        }
-        //TODO check what kind of device is being clicked
-        //TODO check if the device is already connected
-        //TODO connect to the device if the above are false
+        myToast = Toast.makeText(MainActivity.this, text, Toast.LENGTH_SHORT);
+        myToast.show();
     }
 
     public void blinkLed(Led.Color color, int count) {
@@ -221,59 +226,21 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
-    public void beginDiscovery() {
-        //if were already discovering, cancel it first
-        if (mBluetoothAdapter.isDiscovering()) {
-            mBluetoothAdapter.cancelDiscovery();
+    /***********************************************************************************************
+     * Interaction methods
+     **********************************************************************************************/
+    public void listItemClicked(int position) {
+        String deviceName, deviceAddress;
+        if (deviceList != null && macAddressList != null){
+            deviceName = deviceList.get(position);
+            deviceAddress = macAddressList.get(position);
+            makeToast("Trying to connect with " + deviceName);
+            connectToMetawearDevice(deviceAddress, deviceName);
         }
-        mBluetoothAdapter.startDiscovery();
+        //TODO check what kind of device is being clicked
+        //TODO check if the device is already connected
+        //TODO connect to the device if the above are false
     }
-
-    public void connectToPolarDevice(final String deviceAddress, final String deviceName){
-//        MainActivity.this.runOnUiThread(new Runnable() {
-//            public void run() {
-//                makeToast("Connected to PolarH7");
-//                mPolarH7.setChecked(true);
-//                mHelpText.setText("Press continue");
-//            }
-//        });
-        //TODO finalize connection to PolarH7
-        //TODO change mHelpText to just say connect to devices since the polar device tries to connect automatically
-
-    }
-
-    public void connectToMetawearDevice(final String macAddress, final String deviceName) {
-        retrieveBoard(macAddress);
-
-        //Establishes a Bluetooth Low Energy connection to the MetaWear board
-        board.connectAsync().continueWith(new Continuation<Void, Void>() {
-            @Override
-            public Void then(Task<Void> task) throws Exception {
-                if (task.isFaulted()) {
-                    Log.i("MainActivity", "Failed to connect");
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        public void run() {
-                            makeToast("Failed to connect to " + deviceName);
-                        }
-                    });
-                } else {
-                    Log.i("MainActivity", "Connected");
-                    blinkLed(Led.Color.GREEN, 10);
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        public void run() {
-                            makeToast("Connected to " + deviceName);
-                            mMetawearCheckBox.setChecked(true);
-                            mHelpText.setText("Select the PolarH7 device");
-                            mDeviceToBeConnected = "PolarH7";
-                        }
-                    });
-                }
-                return null;
-            }
-        });
-    }
-
-    //TODO make a function that checks if a device has been d/c'd.. Metawear uses onClientConnParamsChanged()
 
     // Create a BroadcastReceiver for ACTION_FOUND.
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
@@ -286,7 +253,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 String deviceName = device.getName();
                 String deviceHardwareAddress = device.getAddress(); // MAC address
                 //make sure its not already in the list if discovery is started again
-                if (!deviceList.contains(deviceName)) {
+                if (deviceName != null) {
                     deviceList.add(deviceName);
                     macAddressList.add(deviceHardwareAddress);
                     arrayAdapter.notifyDataSetChanged();
@@ -294,14 +261,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             }
         }
     };
-
-    public void makeToast(String text){
-        if (myToast != null) {
-            myToast.cancel();
-        }
-        myToast = Toast.makeText(MainActivity.this, text, Toast.LENGTH_SHORT);
-        myToast.show();
-    }
 
     private BluetoothProfile.ServiceListener mProfileListener = new BluetoothProfile.ServiceListener() {
         public void onServiceConnected(int profile, BluetoothProfile proxy) {
@@ -315,7 +274,36 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             }
         }
     };
-
+    //TODO begin here tomorrow
+    public void logButtonClicked() {
+        final Logging logging = board.getModule(Logging.class);
+        if (mLogButton.getText() == "Stop") {
+            logging.stop();
+            mLogButton.setText("Log");
+            // download log data and send 100 progress updates during the download
+            logging.downloadAsync(100, new Logging.LogDownloadUpdateHandler() {
+                @Override
+                public void receivedUpdate(long nEntriesLeft, long totalEntries) {
+                    Log.i("MainActivity", "Progress Update = " + nEntriesLeft + "/" + totalEntries);
+                }
+            }).continueWithTask(new Continuation<Void, Task<Void>>() {
+                @Override
+                public Task<Void> then(Task<Void> task) throws Exception {
+                    Log.i("MainActivity", "Download completed");
+                    makeToast("Download complete");
+                    return null;
+                }
+            });
+        }
+        else {
+            logging.start(true);
+            blinkLed(Led.Color.BLUE, 10);
+            mLogButton.setText("Stop");
+        }
+    }
+    /***********************************************************************************************
+     * Interface methods
+     **********************************************************************************************/
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
         // Typecast the binder to the service's LocalBinder class
@@ -324,13 +312,4 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     @Override
     public void onServiceDisconnected(ComponentName componentName) { }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        // unregister the ACTION_FOUND receiver.
-        unregisterReceiver(mReceiver);
-        // Unbind the service when the activity is destroyed
-        getApplicationContext().unbindService(this);
-    }
 }
