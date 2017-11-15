@@ -29,10 +29,23 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.widget.Toast;
 
+import com.mbientlab.metawear.AsyncDataProducer;
+import com.mbientlab.metawear.Data;
+import com.mbientlab.metawear.DataProducer;
 import com.mbientlab.metawear.MetaWearBoard;
+import com.mbientlab.metawear.Route;
+import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
+import com.mbientlab.metawear.builder.RouteBuilder;
+import com.mbientlab.metawear.builder.RouteComponent;
+import com.mbientlab.metawear.data.Acceleration;
+import com.mbientlab.metawear.data.EulerAngles;
+import com.mbientlab.metawear.data.Quaternion;
+import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.Led;
 import com.mbientlab.metawear.module.Logging;
+import com.mbientlab.metawear.MetaWearBoard.Module;
+import com.mbientlab.metawear.module.SensorFusionBosch;
 
 import org.w3c.dom.Text;
 
@@ -62,6 +75,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private ArrayAdapter<String> arrayAdapter;
     private BtleService.LocalBinder serviceBinder;
     private BluetoothHealth mPolarDevice;
+    private Logging loggingCtrllr;
 
     /***********************************************************************************************
      * Android life cycle methods
@@ -84,8 +98,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         mRefreshButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                deviceList.clear();
-                arrayAdapter.notifyDataSetChanged();
                 beginDiscovery();
                 makeToast("Refreshing bluetooth list..");
             }
@@ -110,7 +122,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         super.onResume();
         //check if device is bluetooth available on device
         if (mBluetoothAdapter == null) {
-            mHelpText.setText("Bluetooth is not supported on this device");
+            makeToast("Bluetooth not supported, closing app...");
             System.exit(0);
         }
         if (!mBluetoothAdapter.isEnabled()) {
@@ -147,6 +159,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void beginDiscovery() {
+        deviceList.clear();
+        macAddressList.clear();
+        arrayAdapter.notifyDataSetChanged();
         //if were already discovering, cancel it first
         if (mBluetoothAdapter.isDiscovering()) {
             mBluetoothAdapter.cancelDiscovery();
@@ -274,7 +289,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             }
         }
     };
-    //TODO begin here tomorrow
     public void logButtonClicked() {
         final Logging logging = board.getModule(Logging.class);
         if (mLogButton.getText() == "Stop") {
@@ -290,7 +304,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 @Override
                 public Task<Void> then(Task<Void> task) throws Exception {
                     Log.i("MainActivity", "Download completed");
-                    makeToast("Download complete");
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        public void run() {
+                            makeToast("Download complete");
+                        }
+                    });
+
                     return null;
                 }
             });
@@ -299,8 +318,31 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             logging.start(true);
             blinkLed(Led.Color.BLUE, 10);
             mLogButton.setText("Stop");
+
+            final SensorFusionBosch sensorFusion = board.getModule(SensorFusionBosch.class);
+            sensorFusion.configure().mode(SensorFusionBosch.Mode.IMU_PLUS).commit();
+            sensorFusion.eulerAngles().addRouteAsync(new RouteBuilder() {
+                @Override
+                public void configure(RouteComponent source) {
+                    source.stream(new Subscriber() {
+                        @Override
+                        public void apply(Data data, Object... env) {
+                            Log.i("MainActivity", "Euler Angles = " + data.value(EulerAngles.class));
+                        }
+                    });
+                }
+            }).continueWith(new Continuation<Route, Void>() {
+                @Override
+                public Void then(Task<Route> task) throws Exception {
+                    sensorFusion.eulerAngles().start();
+                    sensorFusion.start();
+                    return null;
+                }
+            });
+
         }
     }
+
     /***********************************************************************************************
      * Interface methods
      **********************************************************************************************/
