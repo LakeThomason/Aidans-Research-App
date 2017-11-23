@@ -11,8 +11,10 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -46,10 +48,20 @@ import com.mbientlab.metawear.module.Led;
 import com.mbientlab.metawear.module.Logging;
 import com.mbientlab.metawear.MetaWearBoard.Module;
 import com.mbientlab.metawear.module.SensorFusionBosch;
+import com.mbientlab.metawear.module.Switch;
 
 import org.w3c.dom.Text;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -76,6 +88,22 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private BtleService.LocalBinder serviceBinder;
     private BluetoothHealth mPolarDevice;
     private Logging loggingCtrllr;
+    private Logging logging;
+    private SensorFusionBosch sensorFusion;
+    private State state;
+    private File file;
+    private FileWriter writer;
+
+    /***********************************************************************************************
+     * Enums
+     **********************************************************************************************/
+    public enum State {
+        Startup,
+        MetaConnected,
+        PolarConnected,
+        ReadyToLog,
+        Logging
+    }
 
     /***********************************************************************************************
      * Android life cycle methods
@@ -156,6 +184,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         mBluetoothList = (ListView) findViewById(R.id.LIbluetoothList);
         arrayAdapter = new ArrayAdapter<String> (this, android.R.layout.simple_list_item_1, deviceList);
         mBluetoothList.setAdapter(arrayAdapter);
+        state = State.Startup;
     }
 
     public void beginDiscovery() {
@@ -200,11 +229,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     });
                 } else {
                     blinkLed(Led.Color.GREEN, 10);
+                    state = State.MetaConnected;
                     MainActivity.this.runOnUiThread(new Runnable() {
                         public void run() {
                             makeToast("Connected to " + deviceName);
                             mMetawearCheckBox.setChecked(true);
                             mLogButton.setVisibility(View.VISIBLE);
+                            logging = board.getModule(Logging.class);
+                            sensorFusion = board.getModule(SensorFusionBosch.class);
                         }
                     });
                 }
@@ -218,6 +250,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 Log.i("MainActivity", "Unexpectedly lost connection: " + status);
                 makeToast("Lost connection to the MetaWear Device");
                 mMetawearCheckBox.setChecked(false);
+                if (state == State.ReadyToLog || state == State.Logging) {
+                    state = State.PolarConnected;
+                }
+                else {
+                    state = State.Startup;
+                }
             }
         });
         //TODO make a function that checks if a device has been d/c'd.. Metawear uses onClientConnParamsChanged()
@@ -232,12 +270,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void blinkLed(Led.Color color, int count) {
-        Led led;
-        if ((led= board.getModule(Led.class)) != null) {
-            led.editPattern(color, Led.PatternPreset.BLINK)
-                    .repeatCount((byte) count)
-                    .commit();
-            led.play();
+        if (state == State.MetaConnected || state == State.ReadyToLog) {
+            Led led;
+            if ((led = board.getModule(Led.class)) != null) {
+                led.editPattern(color, Led.PatternPreset.BLINK)
+                        .repeatCount((byte) count)
+                        .commit();
+                led.play();
+            }
         }
     }
 
@@ -290,56 +330,104 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     };
     public void logButtonClicked() {
-        final Logging logging = board.getModule(Logging.class);
-        if (mLogButton.getText() == "Stop") {
-            logging.stop();
-            mLogButton.setText("Log");
-            // download log data and send 100 progress updates during the download
-            logging.downloadAsync(100, new Logging.LogDownloadUpdateHandler() {
-                @Override
-                public void receivedUpdate(long nEntriesLeft, long totalEntries) {
-                    Log.i("MainActivity", "Progress Update = " + nEntriesLeft + "/" + totalEntries);
-                }
-            }).continueWithTask(new Continuation<Void, Task<Void>>() {
-                @Override
-                public Task<Void> then(Task<Void> task) throws Exception {
-                    Log.i("MainActivity", "Download completed");
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        public void run() {
-                            makeToast("Download complete");
-                        }
-                    });
 
-                    return null;
-                }
-            });
+        if (state == State.Logging) {
+            stopLogging();
         }
-        else {
-            logging.start(true);
-            blinkLed(Led.Color.BLUE, 10);
-            mLogButton.setText("Stop");
+        else if (state == State.ReadyToLog || state == State.MetaConnected){ //TODO remove second param once polar is setup
+            beginLogging();
+        }
+    }
 
-            final SensorFusionBosch sensorFusion = board.getModule(SensorFusionBosch.class);
-            sensorFusion.configure().mode(SensorFusionBosch.Mode.IMU_PLUS).commit();
-            sensorFusion.eulerAngles().addRouteAsync(new RouteBuilder() {
-                @Override
-                public void configure(RouteComponent source) {
-                    source.stream(new Subscriber() {
-                        @Override
-                        public void apply(Data data, Object... env) {
-                            Log.i("MainActivity", "Euler Angles = " + data.value(EulerAngles.class));
-                        }
-                    });
-                }
-            }).continueWith(new Continuation<Route, Void>() {
-                @Override
-                public Void then(Task<Route> task) throws Exception {
-                    sensorFusion.eulerAngles().start();
-                    sensorFusion.start();
-                    return null;
-                }
-            });
+    public void beginLogging() {
+        blinkLed(Led.Color.BLUE, 10);
+        mLogButton.setText("Stop");
+        state = State.Logging;
 
+        //prepare the datafile to write to
+        file = new File(MainActivity.this.getFilesDir(), "sickFile__TIME:" + DateFormat.getDateTimeInstance().format(new Date()) + "__.csv");
+        try {
+            writer = new FileWriter(file, true);
+        }
+        catch (java.io.IOException e){
+            Log.d("MainActivity", "FileWriter was unable to be created");
+        }
+
+        //setup the sensor
+        sensorFusion.configure().mode(SensorFusionBosch.Mode.IMU_PLUS).commit();
+        sensorFusion.eulerAngles().addRouteAsync(new RouteBuilder() {
+            @Override
+            public void configure(RouteComponent source) {
+                source.log(new Subscriber() {
+                    @Override
+                    public void apply(Data data, Object... env) {
+                        Log.i("MainActivity", "Euler Angles = " + data.value(EulerAngles.class).toString());
+                        appendToCSV(data.formattedTimestamp() + "," + data.value(EulerAngles.class).toString());
+                    }
+                });
+            }
+        }).continueWith(new Continuation<Route, Void>() {
+            @Override
+            public Void then(Task<Route> task) throws Exception {
+                sensorFusion.eulerAngles().start();
+                sensorFusion.start();
+                logging.start(true);
+                return null;
+            }
+        });
+    }
+
+    public void stopLogging() {
+        logging.stop();
+        sensorFusion.stop();
+        sensorFusion.eulerAngles().stop();
+        blinkLed(Led.Color.RED, 5);
+        mLogButton.setText("Log");
+        state = State.ReadyToLog;
+        makeToast("Starting Download");
+
+        // download log data and send 100 progress updates during the download
+        logging.downloadAsync(100, new Logging.LogDownloadUpdateHandler() {
+            @Override
+            public void receivedUpdate(long nEntriesLeft, long totalEntries) {
+                Log.i("MainActivity", "Progress Update = " + nEntriesLeft + "/" + totalEntries);
+            }
+        }).continueWithTask(new Continuation<Void, Task<Void>>() {
+            @Override
+            public Task<Void> then(Task<Void> task) throws Exception {
+                Log.i("MainActivity", "Download completed");
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    public void run() {
+                        makeToast("Download complete");
+                    }
+                });
+                blinkLed(Led.Color.GREEN, 10);
+                logging.clearEntries();
+                return null;
+            }
+        });
+    }
+
+//    private void appendToCSV(String data) {
+//        try {
+//            writer.write(data);
+//            writer.flush();
+//            writer.close();
+//        }
+//        catch (java.io.IOException e){
+//            Log.d("MainActivity", "Unable to write to file");
+//        }
+//    }
+
+    private void appendToCSV(String data) {
+        try {
+            FileOutputStream fou = openFileOutput(file.getName(), MODE_APPEND);
+            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fou);
+            outputStreamWriter.write(data);
+            outputStreamWriter.close();
+        }
+        catch (java.io.IOException e) {
+            Log.e("Exception", "File write failed: " + e.toString());
         }
     }
 
