@@ -9,14 +9,19 @@ import android.bluetooth.BluetoothProfile;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
+import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -56,6 +61,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -64,6 +70,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import bolts.Continuation;
 import bolts.Task;
@@ -82,6 +89,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private final static int REQUEST_ENABLE_BT = 2;
     private final static int REQUEST_ENABLE_LOC = 3;
     private final static int REQUEST_ENABLE_BTADMIN = 4;
+    private final static int REQUEST_WRITE_EXTERNAL_STORAGE = 5;
+    private final static int REQUEST_READ_EXTERNAL_STORAGE = 6;
     private List<String> macAddressList;
     private List<String> deviceList;
     private ArrayAdapter<String> arrayAdapter;
@@ -92,7 +101,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private SensorFusionBosch sensorFusion;
     private State state;
     private File file;
+    private File csvDirectory;
     private FileWriter writer;
+    private long startTime;
 
     /***********************************************************************************************
      * Enums
@@ -112,7 +123,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        requestPermissions();
+        requestAllPermissions();
         prepareDataMembers();
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
@@ -185,20 +196,25 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         arrayAdapter = new ArrayAdapter<String> (this, android.R.layout.simple_list_item_1, deviceList);
         mBluetoothList.setAdapter(arrayAdapter);
         state = State.Startup;
+        startTime = -1;
+        csvDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MetawearFiles");
+            if (!csvDirectory.exists())
+                if (!csvDirectory.mkdirs())
+                    Log.d("MainActivity", "Directory creation has failed");
     }
 
     public void beginDiscovery() {
         deviceList.clear();
         macAddressList.clear();
         arrayAdapter.notifyDataSetChanged();
-        //if were already discovering, cancel it first
+        //if we're already discovering, cancel it first
         if (mBluetoothAdapter.isDiscovering()) {
             mBluetoothAdapter.cancelDiscovery();
         }
         mBluetoothAdapter.startDiscovery();
     }
 
-    public void requestPermissions(){
+    public void requestAllPermissions(){
         ActivityCompat.requestPermissions(MainActivity.this,
                 new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
                 REQUEST_ENABLE_LOC);
@@ -208,6 +224,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         ActivityCompat.requestPermissions(MainActivity.this,
                 new String[]{Manifest.permission.BLUETOOTH_ADMIN},
                 REQUEST_ENABLE_BTADMIN);
+        ActivityCompat.requestPermissions(MainActivity.this,
+                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                REQUEST_READ_EXTERNAL_STORAGE);
+        ActivityCompat.requestPermissions(MainActivity.this,
+                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                REQUEST_WRITE_EXTERNAL_STORAGE);
     }
 
     public void connectToMetawearDevice(final String macAddress, final String deviceName) {
@@ -248,8 +270,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             @Override
             public void disconnected(int status) {
                 Log.i("MainActivity", "Unexpectedly lost connection: " + status);
-                makeToast("Lost connection to the MetaWear Device");
-                mMetawearCheckBox.setChecked(false);
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    public void run() {
+                        makeToast("Lost connection to the MetaWear Device");
+                        mMetawearCheckBox.setChecked(false);
+                    }
+                });
                 if (state == State.ReadyToLog || state == State.Logging) {
                     state = State.PolarConnected;
                 }
@@ -279,6 +305,36 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 led.play();
             }
         }
+    }
+
+    public void emailCSV(String fileLocation) {
+        Intent emailIntent = new Intent(Intent.ACTION_SEND);
+        // set the type to 'email'
+        emailIntent .setType("text/plain");
+        // add email(s) here to whom you want to send email
+        String to[] = {"lakesainthomason@gmail.com"};
+        emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
+        // convert file to uri
+        Uri uri = Uri.fromFile(file);
+        // add the attachment
+        emailIntent .putExtra(Intent.EXTRA_STREAM, uri);
+        // add mail subject
+        emailIntent .putExtra(Intent.EXTRA_SUBJECT, file.getName());
+        // create mail service chooser
+        startActivity(Intent.createChooser(emailIntent, "Send email..."));
+    }
+
+    String formatDataToCSV(Data data) {
+        if (startTime == -1)
+            startTime = System.currentTimeMillis();
+
+        String line =
+                "\n"
+                + String.valueOf((System.currentTimeMillis() - startTime)/1000f)
+                + "," + String.format("%6f", data.value(EulerAngles.class).pitch())
+                + "," + String.format("%6f",data.value(EulerAngles.class).roll())
+                + "," + String.format("%6f",data.value(EulerAngles.class).yaw());
+        return line;
     }
 
     /***********************************************************************************************
@@ -341,16 +397,22 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public void beginLogging() {
         blinkLed(Led.Color.BLUE, 10);
+        logging.clearEntries();
         mLogButton.setText("Stop");
         state = State.Logging;
-
         //prepare the datafile to write to
-        file = new File(MainActivity.this.getFilesDir(), "sickFile__TIME:" + DateFormat.getDateTimeInstance().format(new Date()) + "__.csv");
         try {
-            writer = new FileWriter(file, true);
+            file = new File(csvDirectory, "MetawearCSV__" + //TODO: convert MetawearCSV to test patient id
+                    DateFormat.getDateTimeInstance().format(new Date()) +
+                    "__.csv");
+            file.createNewFile();
+            writer = new FileWriter(file);
+            appendToCSV("Elapsed Time(s),x-axis(deg/s),y-axis(deg/s),z-axis(deg/s)");
         }
-        catch (java.io.IOException e){
-            Log.d("MainActivity", "FileWriter was unable to be created");
+        catch (IOException e) {
+            Log.d("MainActivity", "IOException");
+            e.getMessage();
+            e.printStackTrace();
         }
 
         //setup the sensor
@@ -362,7 +424,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     @Override
                     public void apply(Data data, Object... env) {
                         Log.i("MainActivity", "Euler Angles = " + data.value(EulerAngles.class).toString());
-                        appendToCSV(data.formattedTimestamp() + "," + data.value(EulerAngles.class).toString());
+                        appendToCSV(formatDataToCSV(data));
                     }
                 });
             }
@@ -403,6 +465,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 });
                 blinkLed(Led.Color.GREEN, 10);
                 logging.clearEntries();
+                writer.close();
+                emailCSV(file.getAbsolutePath());
                 return null;
             }
         });
@@ -421,13 +485,19 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     private void appendToCSV(String data) {
         try {
-            FileOutputStream fou = openFileOutput(file.getName(), MODE_APPEND);
-            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fou);
-            outputStreamWriter.write(data);
-            outputStreamWriter.close();
+            //FileOutputStream fou = openFileOutput(file.getName(), Context.MODE_APPEND);
+
+            //OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fou);
+            //outputStreamWriter.write(data);
+            //outputStreamWriter.close();
+            writer.append(data);
+            writer.flush();
+//            fou.write(data.getBytes());
+//            fou.close();
         }
         catch (java.io.IOException e) {
-            Log.e("Exception", "File write failed: " + e.toString());
+            Log.d("IOException", "File write failed: ");
+            e.printStackTrace();
         }
     }
 
