@@ -4,27 +4,14 @@ import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothHealth;
-import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.IntentSender;
-import android.content.ServiceConnection;
-import android.content.pm.PackageManager;
-import android.media.MediaScannerConnection;
-import android.net.Uri;
-import android.os.Environment;
-import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -32,60 +19,20 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.os.Bundle;
-import android.os.IBinder;
-import android.widget.Toast;
 
-import com.mbientlab.metawear.AsyncDataProducer;
-import com.mbientlab.metawear.Data;
-import com.mbientlab.metawear.DataProducer;
-import com.mbientlab.metawear.MetaWearBoard;
-import com.mbientlab.metawear.Route;
-import com.mbientlab.metawear.Subscriber;
-import com.mbientlab.metawear.android.BtleService;
-import com.mbientlab.metawear.builder.RouteBuilder;
-import com.mbientlab.metawear.builder.RouteComponent;
-import com.mbientlab.metawear.data.Acceleration;
-import com.mbientlab.metawear.data.EulerAngles;
-import com.mbientlab.metawear.data.Quaternion;
-import com.mbientlab.metawear.module.Accelerometer;
-import com.mbientlab.metawear.module.Led;
-import com.mbientlab.metawear.module.Logging;
-import com.mbientlab.metawear.MetaWearBoard.Module;
-import com.mbientlab.metawear.module.SensorFusionBosch;
-import com.mbientlab.metawear.module.Switch;
-
-import org.w3c.dom.Text;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.text.DateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
-import bolts.Continuation;
-import bolts.Task;
 
-public class MainActivity extends AppCompatActivity implements ServiceConnection {
+
+public class MainActivity extends AppCompatActivity {
     private TextView mHelpText;
     private ListView mBluetoothList;
     private Button mContinueButton;
     private Button mLogButton;
-    private CheckBox mMetawearCheckBox;
     private CheckBox mPolarH7;
-    private MetaWearBoard board;
     private TextView mRefreshButton;
     private BluetoothAdapter mBluetoothAdapter;
-    private Toast myToast;
     private final static int REQUEST_ENABLE_BT = 2;
     private final static int REQUEST_ENABLE_LOC = 3;
     private final static int REQUEST_ENABLE_BTADMIN = 4;
@@ -94,27 +41,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private List<String> macAddressList;
     private List<String> deviceList;
     private ArrayAdapter<String> arrayAdapter;
-    private BtleService.LocalBinder serviceBinder;
     private BluetoothHealth mPolarDevice;
-    private Logging loggingCtrllr;
-    private Logging logging;
-    private SensorFusionBosch sensorFusion;
-    private State state;
-    private File file;
-    private File csvDirectory;
-    private FileWriter writer;
-    private long startTime;
 
-    /***********************************************************************************************
-     * Enums
-     **********************************************************************************************/
-    public enum State {
-        Startup,
-        MetaConnected,
-        PolarConnected,
-        ReadyToLog,
-        Logging
-    }
+    private MetawearConnected metawearConnectedState;
+    private EasyToast easyToast;
 
     /***********************************************************************************************
      * Android life cycle methods
@@ -123,6 +53,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
+        easyToast = new EasyToast(MainActivity.this);
+        metawearConnectedState = new MetawearConnected(MainActivity.this, easyToast);
+
         requestAllPermissions();
         prepareDataMembers();
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -138,7 +73,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             @Override
             public void onClick(View v) {
                 beginDiscovery();
-                makeToast("Refreshing bluetooth list..");
+                easyToast.makeToast("Refreshing bluetooth list..");
             }
         });
         mLogButton.setOnClickListener(new View.OnClickListener() {
@@ -147,8 +82,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 logButtonClicked();
             }
         });
-        // Bind the service when the activity is created (metawear)
-        getApplicationContext().bindService(new Intent(this, BtleService.class), this, Context.BIND_AUTO_CREATE);
 
         // Register for broadcasts when a device is discovered.
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
@@ -161,7 +94,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         super.onResume();
         //check if device is bluetooth available on device
         if (mBluetoothAdapter == null) {
-            makeToast("Bluetooth not supported, closing app...");
+            easyToast.makeToast("Bluetooth not supported, closing app...");
             System.exit(0);
         }
         if (!mBluetoothAdapter.isEnabled()) {
@@ -176,8 +109,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         super.onDestroy();
         // unregister the ACTION_FOUND receiver.
         unregisterReceiver(mReceiver);
-        // Unbind the service when the activity is destroyed
-        getApplicationContext().unbindService(this);
+        metawearConnectedState.destroyService();
     }
 
     /***********************************************************************************************
@@ -186,7 +118,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void prepareDataMembers() {
         mHelpText =  (TextView) findViewById(R.id.HelpText);
         mRefreshButton = (TextView) findViewById(R.id.refreshText);
-        mMetawearCheckBox = (CheckBox) findViewById(R.id.metawearCheckBox);
         mPolarH7 = (CheckBox) findViewById(R.id.polarh7CheckBox);
         mContinueButton = (Button) findViewById(R.id.continueButton);
         mLogButton  = (Button) findViewById(R.id.logButton);
@@ -195,12 +126,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         mBluetoothList = (ListView) findViewById(R.id.LIbluetoothList);
         arrayAdapter = new ArrayAdapter<String> (this, android.R.layout.simple_list_item_1, deviceList);
         mBluetoothList.setAdapter(arrayAdapter);
-        state = State.Startup;
-        startTime = -1;
-        csvDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MetawearFiles");
-            if (!csvDirectory.exists())
-                if (!csvDirectory.mkdirs())
-                    Log.d("MainActivity", "Directory creation has failed");
     }
 
     public void beginDiscovery() {
@@ -232,111 +157,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 REQUEST_WRITE_EXTERNAL_STORAGE);
     }
 
-    public void connectToMetawearDevice(final String macAddress, final String deviceName) {
-        final BluetoothManager btManager=
-                (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        final BluetoothDevice remoteDevice=
-                btManager.getAdapter().getRemoteDevice(macAddress);
-        board = serviceBinder.getMetaWearBoard(remoteDevice);
-
-        //Establishes a Bluetooth Low Energy connection to the MetaWear board
-        board.connectAsync().continueWith(new Continuation<Void, Void>() {
-            @Override
-            public Void then(Task<Void> task) throws Exception {
-                if (task.isFaulted()) {
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        public void run() {
-                            makeToast("Failed to connect to " + deviceName);
-                        }
-                    });
-                } else {
-                    blinkLed(Led.Color.GREEN, 10);
-                    state = State.MetaConnected;
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        public void run() {
-                            makeToast("Connected to " + deviceName);
-                            mMetawearCheckBox.setChecked(true);
-                            mLogButton.setVisibility(View.VISIBLE);
-                            logging = board.getModule(Logging.class);
-                            sensorFusion = board.getModule(SensorFusionBosch.class);
-                        }
-                    });
-                }
-                return null;
-            }
-        });
-        //set an unexpected disconnect listener
-        board.onUnexpectedDisconnect(new MetaWearBoard.UnexpectedDisconnectHandler() {
-            @Override
-            public void disconnected(int status) {
-                Log.i("MainActivity", "Unexpectedly lost connection: " + status);
-                MainActivity.this.runOnUiThread(new Runnable() {
-                    public void run() {
-                        makeToast("Lost connection to the MetaWear Device");
-                        mMetawearCheckBox.setChecked(false);
-                    }
-                });
-                if (state == State.ReadyToLog || state == State.Logging) {
-                    state = State.PolarConnected;
-                }
-                else {
-                    state = State.Startup;
-                }
-            }
-        });
-        //TODO make a function that checks if a device has been d/c'd.. Metawear uses onClientConnParamsChanged()
-    }
-
-    public void makeToast(String text){
-        if (myToast != null) {
-            myToast.cancel();
-        }
-        myToast = Toast.makeText(MainActivity.this, text, Toast.LENGTH_SHORT);
-        myToast.show();
-    }
-
-    public void blinkLed(Led.Color color, int count) {
-        if (state == State.MetaConnected || state == State.ReadyToLog) {
-            Led led;
-            if ((led = board.getModule(Led.class)) != null) {
-                led.editPattern(color, Led.PatternPreset.BLINK)
-                        .repeatCount((byte) count)
-                        .commit();
-                led.play();
-            }
-        }
-    }
-
-    public void emailCSV(String fileLocation) {
-        Intent emailIntent = new Intent(Intent.ACTION_SEND);
-        // set the type to 'email'
-        emailIntent .setType("text/plain");
-        // add email(s) here to whom you want to send email
-        String to[] = {"lakesainthomason@gmail.com"};
-        emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
-        // convert file to uri
-        Uri uri = Uri.fromFile(file);
-        // add the attachment
-        emailIntent .putExtra(Intent.EXTRA_STREAM, uri);
-        // add mail subject
-        emailIntent .putExtra(Intent.EXTRA_SUBJECT, file.getName());
-        // create mail service chooser
-        startActivity(Intent.createChooser(emailIntent, "Send email..."));
-    }
-
-    String formatDataToCSV(Data data) {
-        if (startTime == -1)
-            startTime = System.currentTimeMillis();
-
-        String line =
-                "\n"
-                + String.valueOf((System.currentTimeMillis() - startTime)/1000f)
-                + "," + String.format("%6f", data.value(EulerAngles.class).pitch())
-                + "," + String.format("%6f",data.value(EulerAngles.class).roll())
-                + "," + String.format("%6f",data.value(EulerAngles.class).yaw());
-        return line;
-    }
-
     /***********************************************************************************************
      * Interaction methods
      **********************************************************************************************/
@@ -345,13 +165,15 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         if (deviceList != null && macAddressList != null){
             deviceName = deviceList.get(position);
             deviceAddress = macAddressList.get(position);
-            makeToast("Trying to connect with " + deviceName);
-            connectToMetawearDevice(deviceAddress, deviceName);
+
+            easyToast.makeToast("Trying to connect with " + deviceName);
+            metawearConnectedState.connectToMetawearDevice(deviceAddress, deviceName);
         }
         //TODO check what kind of device is being clicked
         //TODO check if the device is already connected
         //TODO connect to the device if the above are false
     }
+
 
     // Create a BroadcastReceiver for ACTION_FOUND.
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
@@ -386,130 +208,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     };
     public void logButtonClicked() {
-
-        if (state == State.Logging) {
-            stopLogging();
-        }
-        else if (state == State.ReadyToLog || state == State.MetaConnected){ //TODO remove second param once polar is setup
-            beginLogging();
-        }
+        //if (state == State.Logging)
+        if (mLogButton.getText().toString().equals("Log")) //temporary //TODO STATE
+            metawearConnectedState.beginLogging();
+        else
+        //else if (state == State.ReadyToLog || state == State.MetaConnected) //TODO remove second param once polar is setup
+            metawearConnectedState.stopLogging();
     }
-
-    public void beginLogging() {
-        blinkLed(Led.Color.BLUE, 10);
-        logging.clearEntries();
-        mLogButton.setText("Stop");
-        state = State.Logging;
-        //prepare the datafile to write to
-        try {
-            file = new File(csvDirectory, "MetawearCSV__" + //TODO: convert MetawearCSV to test patient id
-                    DateFormat.getDateTimeInstance().format(new Date()) +
-                    "__.csv");
-            file.createNewFile();
-            writer = new FileWriter(file);
-            appendToCSV("Elapsed Time(s),x-axis(deg/s),y-axis(deg/s),z-axis(deg/s)");
-        }
-        catch (IOException e) {
-            Log.d("MainActivity", "IOException");
-            e.getMessage();
-            e.printStackTrace();
-        }
-
-        //setup the sensor
-        sensorFusion.configure().mode(SensorFusionBosch.Mode.IMU_PLUS).commit();
-        sensorFusion.eulerAngles().addRouteAsync(new RouteBuilder() {
-            @Override
-            public void configure(RouteComponent source) {
-                source.log(new Subscriber() {
-                    @Override
-                    public void apply(Data data, Object... env) {
-                        Log.i("MainActivity", "Euler Angles = " + data.value(EulerAngles.class).toString());
-                        appendToCSV(formatDataToCSV(data));
-                    }
-                });
-            }
-        }).continueWith(new Continuation<Route, Void>() {
-            @Override
-            public Void then(Task<Route> task) throws Exception {
-                sensorFusion.eulerAngles().start();
-                sensorFusion.start();
-                logging.start(true);
-                return null;
-            }
-        });
-    }
-
-    public void stopLogging() {
-        logging.stop();
-        sensorFusion.stop();
-        sensorFusion.eulerAngles().stop();
-        blinkLed(Led.Color.RED, 5);
-        mLogButton.setText("Log");
-        state = State.ReadyToLog;
-        makeToast("Starting Download");
-
-        // download log data and send 100 progress updates during the download
-        logging.downloadAsync(100, new Logging.LogDownloadUpdateHandler() {
-            @Override
-            public void receivedUpdate(long nEntriesLeft, long totalEntries) {
-                Log.i("MainActivity", "Progress Update = " + nEntriesLeft + "/" + totalEntries);
-            }
-        }).continueWithTask(new Continuation<Void, Task<Void>>() {
-            @Override
-            public Task<Void> then(Task<Void> task) throws Exception {
-                Log.i("MainActivity", "Download completed");
-                MainActivity.this.runOnUiThread(new Runnable() {
-                    public void run() {
-                        makeToast("Download complete");
-                    }
-                });
-                blinkLed(Led.Color.GREEN, 10);
-                logging.clearEntries();
-                writer.close();
-                emailCSV(file.getAbsolutePath());
-                return null;
-            }
-        });
-    }
-
-//    private void appendToCSV(String data) {
-//        try {
-//            writer.write(data);
-//            writer.flush();
-//            writer.close();
-//        }
-//        catch (java.io.IOException e){
-//            Log.d("MainActivity", "Unable to write to file");
-//        }
-//    }
-
-    private void appendToCSV(String data) {
-        try {
-            //FileOutputStream fou = openFileOutput(file.getName(), Context.MODE_APPEND);
-
-            //OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fou);
-            //outputStreamWriter.write(data);
-            //outputStreamWriter.close();
-            writer.append(data);
-            writer.flush();
-//            fou.write(data.getBytes());
-//            fou.close();
-        }
-        catch (java.io.IOException e) {
-            Log.d("IOException", "File write failed: ");
-            e.printStackTrace();
-        }
-    }
-
-    /***********************************************************************************************
-     * Interface methods
-     **********************************************************************************************/
-    @Override
-    public void onServiceConnected(ComponentName name, IBinder service) {
-        // Typecast the binder to the service's LocalBinder class
-        serviceBinder = (BtleService.LocalBinder) service;
-    }
-
-    @Override
-    public void onServiceDisconnected(ComponentName componentName) { }
 }
