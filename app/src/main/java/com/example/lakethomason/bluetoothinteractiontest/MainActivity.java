@@ -30,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
     private ListView mBluetoothList;
     private Button mContinueButton;
     private Button mLogButton;
-    private CheckBox mPolarH7;
+    private CheckBox mPolarH7CheckBox;
     private TextView mRefreshButton;
     private BluetoothAdapter mBluetoothAdapter;
     private final static int REQUEST_ENABLE_BT = 2;
@@ -44,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothHealth mPolarDevice;
 
     private MetawearConnected metawearConnectedState;
+    private PolarH7 polarH7Device;
     private EasyToast easyToast;
 
     /***********************************************************************************************
@@ -54,13 +55,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-        easyToast = new EasyToast(MainActivity.this);
-        metawearConnectedState = new MetawearConnected(MainActivity.this, easyToast);
-
         requestAllPermissions();
         prepareDataMembers();
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+        easyToast = new EasyToast(MainActivity.this);
+        metawearConnectedState = new MetawearConnected(MainActivity.this, easyToast);
+        polarH7Device = new PolarH7(MainActivity.this, easyToast, mBluetoothAdapter);
+
+        mBluetoothAdapter.getBluetoothLeScanner().startScan(polarH7Device.scanCallback);
 
         //prepare for listitem clicks
         mBluetoothList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -73,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 beginDiscovery();
+                mBluetoothAdapter.getBluetoothLeScanner().startScan(polarH7Device.scanCallback);
                 easyToast.makeToast("Refreshing bluetooth list..");
             }
         });
@@ -86,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
         // Register for broadcasts when a device is discovered.
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
         registerReceiver(mReceiver, filter);
-        mBluetoothAdapter.getProfileProxy(MainActivity.this, mProfileListener, BluetoothProfile.HEALTH);
+        //mBluetoothAdapter.getProfileProxy(MainActivity.this, mProfileListener, BluetoothProfile.HEALTH);
     }
 
     @Override
@@ -118,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
     public void prepareDataMembers() {
         mHelpText =  (TextView) findViewById(R.id.HelpText);
         mRefreshButton = (TextView) findViewById(R.id.refreshText);
-        mPolarH7 = (CheckBox) findViewById(R.id.polarh7CheckBox);
+        mPolarH7CheckBox = (CheckBox) findViewById(R.id.polarh7CheckBox);
         mContinueButton = (Button) findViewById(R.id.continueButton);
         mLogButton  = (Button) findViewById(R.id.logButton);
         deviceList = new ArrayList<String>();
@@ -195,18 +199,16 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private BluetoothProfile.ServiceListener mProfileListener = new BluetoothProfile.ServiceListener() {
-        public void onServiceConnected(int profile, BluetoothProfile proxy) {
-            if (profile == BluetoothProfile.HEALTH) {
-                mPolarDevice = (BluetoothHealth) proxy;
-            }
-        }
-        public void onServiceDisconnected(int profile) {
-            if (profile == BluetoothProfile.HEALTH) {
-                mPolarDevice = null;
-            }
-        }
-    };
+//    private BluetoothProfile.ServiceListener mProfileListener = new BluetoothProfile.ServiceListener() {
+//        public void onServiceConnected(int profile, BluetoothProfile proxy) {
+//            if (profile == BluetoothProfile.HEALTH) {
+//                mPolarDevice = (BluetoothHealth) proxy;}
+//        }
+//        public void onServiceDisconnected(int profile) {
+//            if (profile == BluetoothProfile.HEALTH) {
+//                mPolarDevice = null;}
+//        }
+//    };
     public void logButtonClicked() {
         //if (state == State.Logging)
         if (mLogButton.getText().toString().equals("Log")) //temporary //TODO STATE

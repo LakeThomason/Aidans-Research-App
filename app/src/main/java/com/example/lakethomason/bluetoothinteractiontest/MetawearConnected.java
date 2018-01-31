@@ -73,6 +73,7 @@ public class MetawearConnected implements ServiceConnection{
                 Log.d("MainActivity", "Directory creation has failed");
         // Bind the service when the activity is created (metawear)
         activity.getApplicationContext().bindService(new Intent(activity, BtleService.class), this, Context.BIND_AUTO_CREATE);
+
     }
 
     public void blinkLed(Led.Color color, int count) {
@@ -221,7 +222,7 @@ public class MetawearConnected implements ServiceConnection{
         }
     }
 
-    String formatDataToCSV(Data data) {
+    private String formatDataToCSV(Data data) {
         if (startTime == -1)
             startTime = System.currentTimeMillis();
 
@@ -239,7 +240,7 @@ public class MetawearConnected implements ServiceConnection{
         // set the type to 'email'
         emailIntent .setType("text/plain");
         // add email(s) here to whom you want to send email
-        String to[] = {"lakesainthomason@gmail.com"}; //TODO email input
+        String to[] = {"mcguinnua@sou.edu"}; //TODO email input
         emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
         // convert file to uri
         Uri uri = Uri.fromFile(file);
