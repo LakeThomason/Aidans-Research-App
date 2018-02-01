@@ -53,9 +53,9 @@ public class PolarH7 {
 
         context = activity.getApplicationContext();
 
-        mPolarH7CheckBox = (CheckBox) _activity.findViewById(R.id.polarh7CheckBox);
-        mLogButton = (Button) _activity.findViewById(R.id.logButton);
-        mHeartRateText = (TextView) activity.findViewById(R.id.heartRateText);
+        mPolarH7CheckBox = activity.findViewById(R.id.polarh7CheckBox);
+        mLogButton = activity.findViewById(R.id.logButton);
+        mHeartRateText = activity.findViewById(R.id.heartRateText);
     }
     private void updateHeartRateText(final int value) {
         activity.runOnUiThread(new Runnable() {
@@ -178,14 +178,8 @@ public enum AD_TYPE
         if( content.containsKey(AD_TYPE.GAP_ADTYPE_LOCAL_NAME_COMPLETE) ) {
             String name = new String(content.get(AD_TYPE.GAP_ADTYPE_LOCAL_NAME_COMPLETE));
             if (name.startsWith("Polar ")) {
-                if( device.getAddress().equals("00:22:D0:CD:2A:34") ){
-                    bluetoothAdapter.getBluetoothLeScanner().stopScan(scanCallback);
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        device.connectGatt(context,false,bluetoothGattCallback, BluetoothDevice.TRANSPORT_LE);
-                    } else {
-                        device.connectGatt(context,false,bluetoothGattCallback);
-                    }
-                }
+                bluetoothAdapter.getBluetoothLeScanner().stopScan(scanCallback);
+                device.connectGatt(context,false,bluetoothGattCallback, BluetoothDevice.TRANSPORT_LE);
             }
         }
     }

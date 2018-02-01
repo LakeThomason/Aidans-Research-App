@@ -49,17 +49,14 @@ public class MetawearConnected implements ServiceConnection{
     private MetaWearBoard board;
     private BtleService.LocalBinder serviceBinder;
 
-    private Toast myToast;
     private CheckBox mMetawearCheckBox;
     private Button mLogButton;
 
-    private File file;
-    private File csvDirectory;
-    private FileWriter writer;
     private long startTime;
 
     private Activity activity;
     private EasyToast easyToast;
+    private FileCreator fileCreator;
 
     public MetawearConnected(Activity _activity, EasyToast _easyToast) {
         activity = _activity;
@@ -67,13 +64,7 @@ public class MetawearConnected implements ServiceConnection{
         mMetawearCheckBox = (CheckBox) _activity.findViewById(R.id.metawearCheckBox);
         mLogButton  = (Button) _activity.findViewById(R.id.logButton);
         startTime = -1;
-        csvDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MetawearFiles");
-        if (!csvDirectory.exists())
-            if (!csvDirectory.mkdirs())
-                Log.d("MainActivity", "Directory creation has failed");
-        // Bind the service when the activity is created (metawear)
         activity.getApplicationContext().bindService(new Intent(activity, BtleService.class), this, Context.BIND_AUTO_CREATE);
-
     }
 
     public void blinkLed(Led.Color color, int count) {
@@ -142,21 +133,7 @@ public class MetawearConnected implements ServiceConnection{
         blinkLed(Led.Color.BLUE, 10);
         mLogButton.setText("Stop");
 //        state = MainActivity.State.Logging;  TODO:STATE
-
-        //prepare the datafile to write to
-        try {
-            file = new File(csvDirectory, "MetawearCSV__" + //TODO: convert MetawearCSV to test patient id
-                    DateFormat.getDateTimeInstance().format(new Date()) +
-                    "__.csv");
-            file.createNewFile();
-            writer = new FileWriter(file);
-            appendToCSV("Elapsed Time(s),x-axis(deg/s),y-axis(deg/s),z-axis(deg/s)");
-        }
-        catch (IOException e) {
-            Log.d("MainActivity", "IOException");
-            e.getMessage();
-            e.printStackTrace();
-        }
+        fileCreator = new FileCreator("MyDir");
 
         //setup the sensor
         sensorFusion.configure().mode(SensorFusionBosch.Mode.IMU_PLUS).commit();
@@ -167,7 +144,7 @@ public class MetawearConnected implements ServiceConnection{
                     @Override
                     public void apply(Data data, Object... env) {
                         Log.i("MainActivity", "Euler Angles = " + data.value(EulerAngles.class).toString());
-                        appendToCSV(formatDataToCSV(data));
+                        fileCreator.appendLineToCSV(formatDataToCSV(data));
                     }
                 });
             }
@@ -186,7 +163,7 @@ public class MetawearConnected implements ServiceConnection{
         logging.stop();
         sensorFusion.stop();
         sensorFusion.eulerAngles().stop();
-        blinkLed(Led.Color.RED, 5);
+        blinkLed(Led.Color.BLUE, 5);
         mLogButton.setText("Log");
         // state = MainActivity.State.ReadyToLog; TODO:state
         easyToast.makeToast("Starting Download");
@@ -204,22 +181,11 @@ public class MetawearConnected implements ServiceConnection{
                 easyToast.makeToastOnUIThread("Download Complete");
                 blinkLed(Led.Color.GREEN, 10);
                 logging.clearEntries();
-                writer.close();
-                emailCSV(file.getAbsolutePath());
+                fileCreator.closeFile();
+                emailCSV(fileCreator.getFile().getAbsolutePath());
                 return null;
             }
         });
-    }
-
-    private void appendToCSV(String data) {
-        try {
-            writer.append(data);
-            writer.flush();
-        }
-        catch (java.io.IOException e) {
-            Log.d("IOException", "File write failed: ");
-            e.printStackTrace();
-        }
     }
 
     private String formatDataToCSV(Data data) {
@@ -240,14 +206,14 @@ public class MetawearConnected implements ServiceConnection{
         // set the type to 'email'
         emailIntent .setType("text/plain");
         // add email(s) here to whom you want to send email
-        String to[] = {"mcguinnua@sou.edu"}; //TODO email input
+        String to[] = {"lakesainthomason@gmail.com"}; //TODO email input
         emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
         // convert file to uri
-        Uri uri = Uri.fromFile(file);
+        Uri uri = Uri.fromFile(fileCreator.getFile());
         // add the attachment
         emailIntent .putExtra(Intent.EXTRA_STREAM, uri);
         // add mail subject
-        emailIntent .putExtra(Intent.EXTRA_SUBJECT, file.getName());
+        emailIntent .putExtra(Intent.EXTRA_SUBJECT, fileCreator.getFile().getName());
         // create mail service chooser
         activity.startActivity(Intent.createChooser(emailIntent, "Save results"));
     }
