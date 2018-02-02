@@ -21,9 +21,11 @@ public class FileCreator {
     private FileWriter writer;
     private File file;
 
-    public FileCreator(String directoryName) {
+
+    //directoryName is name of test subject
+    public FileCreator(String subjectName, String deviceName) {
         dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                , "MetawearFiles");
+                , "MetawearFiles/" + subjectName);
         if (!dir.exists()) {
             if (!dir.mkdirs()) {
                 Log.d("MainActivity", "Directory creation has failed");
@@ -31,12 +33,11 @@ public class FileCreator {
         }
         //prepare the datafile to write to
         try {
-            file = new File(dir, "MetawearCSV__" + //TODO: convert MetawearCSV to test patient id
+            file = new File(dir, subjectName + ": " + deviceName + "_" +
                     DateFormat.getDateTimeInstance().format(new Date()) +
-                    "__.csv");
+                    "_.csv");
             file.createNewFile();
             writer = new FileWriter(file);
-            appendLineToCSV("Elapsed Time(s),x-axis(deg/s),y-axis(deg/s),z-axis(deg/s)");
         }
         catch (IOException e) {
             Log.d("MainActivity", "IOException");
@@ -70,6 +71,10 @@ public class FileCreator {
 
     public File getFile(){
         return this.file;
+    }
+
+    public File getDir() {
+        return this.dir;
     }
 
 }

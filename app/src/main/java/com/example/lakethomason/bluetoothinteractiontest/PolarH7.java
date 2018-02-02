@@ -3,6 +3,7 @@ package com.example.lakethomason.bluetoothinteractiontest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Environment;
 import android.util.Log;
 import android.view.View;
@@ -24,6 +25,7 @@ import android.bluetooth.le.ScanResult;
 import android.content.Context;
 import android.os.Build;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,22 +36,64 @@ import java.util.UUID;
  */
 
 public class PolarH7 {
+    public enum AD_TYPE
+    {
+        GAP_ADTYPE_UNKNOWN(0),
+        GAP_ADTYPE_FLAGS(1)                         ,
+        GAP_ADTYPE_16BIT_MORE(2)                    , //!< Service: More 16-bit UUIDs available
+        GAP_ADTYPE_16BIT_COMPLETE(3)                , //!< Service: Complete list of 16-bit UUIDs
+        GAP_ADTYPE_32BIT_MORE(4)                    , //!< Service: More 32-bit UUIDs available
+        GAP_ADTYPE_32BIT_COMPLETE(5)                , //!< Service: Complete list of 32-bit UUIDs
+        GAP_ADTYPE_128BIT_MORE(6)                   , //!< Service: More 128-bit UUIDs available
+        GAP_ADTYPE_128BIT_COMPLETE(7)               , //!< Service: Complete list of 128-bit UUIDs
+        GAP_ADTYPE_LOCAL_NAME_SHORT(8)              , //!< Shortened local name
+        GAP_ADTYPE_LOCAL_NAME_COMPLETE(9)           , //!< Complete local name
+        GAP_ADTYPE_POWER_LEVEL(10)                  , //!< TX Power Level: 0xXX: -127 to +127 dBm
+        GAP_ADTYPE_OOB_CLASS_OF_DEVICE(11)          , //!< Simple Pairing OOB Tag: Class of device (3 octets)
+        GAP_ADTYPE_OOB_SIMPLE_PAIRING_HASHC(12)     , //!< Simple Pairing OOB Tag: Simple Pairing Hash C (16 octets)
+        GAP_ADTYPE_OOB_SIMPLE_PAIRING_RANDR(13)     , //!< Simple Pairing OOB Tag: Simple Pairing Randomizer R (16 octets)
+        GAP_ADTYPE_SM_TK(14)                        , //!< Security Manager TK Value
+        GAP_ADTYPE_SM_OOB_FLAG(15)                  , //!< Secutiry Manager OOB Flags
+        GAP_ADTYPE_SLAVE_CONN_INTERVAL_RANGE(16)    , //!< Min and Max values of the connection interval (2 octets Min, 2 octets Max) (0xFFFF indicates no conn interval min or max)
+        GAP_ADTYPE_SIGNED_DATA(17)                  , //!< Signed Data field
+        GAP_ADTYPE_SERVICES_LIST_16BIT(18)          , //!< Service Solicitation: list of 16-bit Service UUIDs
+        GAP_ADTYPE_SERVICES_LIST_128BIT(19)         , //!< Service Solicitation: list of 128-bit Service UUIDs
+        GAP_ADTYPE_SERVICE_DATA(20)                 , //!< Service Data
+        GAP_ADTYPE_MANUFACTURER_SPECIFIC(0xFF);       //!< Manufacturer Specific Data: first 2 octets contain the Company Identifier Code followed by the additional manufacturer specific data
+
+        private int numVal;
+
+        AD_TYPE(int numVal) {
+            this.numVal = numVal;
+        }
+
+        public int getNumVal() {
+            return numVal;
+        }
+    };
     private Activity activity;
     private EasyToast easyToast;
 
-    private Toast myToast;
     private CheckBox mPolarH7CheckBox;
     private Button mLogButton;
     private TextView mHeartRateText;
 
     private BluetoothAdapter bluetoothAdapter;
-    private BluetoothManager btManager;
     private Context context;
+    private FileCreator fileCreator;
+    private boolean log;
+    private long startTime;
+
+    public final UUID HR_MEASUREMENT = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb");
+    public final UUID HR_SERVICE = UUID.fromString("0000180D-0000-1000-8000-00805f9b34fb");
+    public static final UUID DESCRIPTOR_CCC = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+
 
     public PolarH7(Activity _activity, EasyToast _easyToast, BluetoothAdapter adapter) {
         activity = _activity;
         easyToast = _easyToast;
         bluetoothAdapter = adapter;
+        log = false;
 
         context = activity.getApplicationContext();
 
@@ -57,11 +101,26 @@ public class PolarH7 {
         mLogButton = activity.findViewById(R.id.logButton);
         mHeartRateText = activity.findViewById(R.id.heartRateText);
     }
+
+    public void beginLogging() {
+        fileCreator = new FileCreator("Lake", "Polar H7");
+        fileCreator.appendLineToCSV("Elapsed Time(s),Heart Rate(bpm),RR Value(ms)");
+        log = true;
+        startTime = -1;
+    }
+
+    public void stopLogging() {
+        log = false;
+        fileCreator.closeFile();
+    }
+
+    public File getFile() {
+        return fileCreator.getFile();
+    }
+
     private void updateHeartRateText(final int value) {
         activity.runOnUiThread(new Runnable() {
-            public void run() {
-                mHeartRateText.setText(String.valueOf(value));
-            }
+            public void run() {mHeartRateText.setText(String.valueOf(value));}
         });
     }
 
@@ -72,45 +131,32 @@ public class PolarH7 {
             }
         });
     }
-/**************************************************************************************************/
-/* ADAPTED HEART RATE EXAMPLE CODE                                                                */
-/**************************************************************************************************/
 
-public enum AD_TYPE
-{
-    GAP_ADTYPE_UNKNOWN(0),
-    GAP_ADTYPE_FLAGS(1)                         ,
-    GAP_ADTYPE_16BIT_MORE(2)                    , //!< Service: More 16-bit UUIDs available
-    GAP_ADTYPE_16BIT_COMPLETE(3)                , //!< Service: Complete list of 16-bit UUIDs
-    GAP_ADTYPE_32BIT_MORE(4)                    , //!< Service: More 32-bit UUIDs available
-    GAP_ADTYPE_32BIT_COMPLETE(5)                , //!< Service: Complete list of 32-bit UUIDs
-    GAP_ADTYPE_128BIT_MORE(6)                   , //!< Service: More 128-bit UUIDs available
-    GAP_ADTYPE_128BIT_COMPLETE(7)               , //!< Service: Complete list of 128-bit UUIDs
-    GAP_ADTYPE_LOCAL_NAME_SHORT(8)              , //!< Shortened local name
-    GAP_ADTYPE_LOCAL_NAME_COMPLETE(9)           , //!< Complete local name
-    GAP_ADTYPE_POWER_LEVEL(10)                  , //!< TX Power Level: 0xXX: -127 to +127 dBm
-    GAP_ADTYPE_OOB_CLASS_OF_DEVICE(11)          , //!< Simple Pairing OOB Tag: Class of device (3 octets)
-    GAP_ADTYPE_OOB_SIMPLE_PAIRING_HASHC(12)     , //!< Simple Pairing OOB Tag: Simple Pairing Hash C (16 octets)
-    GAP_ADTYPE_OOB_SIMPLE_PAIRING_RANDR(13)     , //!< Simple Pairing OOB Tag: Simple Pairing Randomizer R (16 octets)
-    GAP_ADTYPE_SM_TK(14)                        , //!< Security Manager TK Value
-    GAP_ADTYPE_SM_OOB_FLAG(15)                  , //!< Secutiry Manager OOB Flags
-    GAP_ADTYPE_SLAVE_CONN_INTERVAL_RANGE(16)    , //!< Min and Max values of the connection interval (2 octets Min, 2 octets Max) (0xFFFF indicates no conn interval min or max)
-    GAP_ADTYPE_SIGNED_DATA(17)                  , //!< Signed Data field
-    GAP_ADTYPE_SERVICES_LIST_16BIT(18)          , //!< Service Solicitation: list of 16-bit Service UUIDs
-    GAP_ADTYPE_SERVICES_LIST_128BIT(19)         , //!< Service Solicitation: list of 128-bit Service UUIDs
-    GAP_ADTYPE_SERVICE_DATA(20)                 , //!< Service Data
-    GAP_ADTYPE_MANUFACTURER_SPECIFIC(0xFF);       //!< Manufacturer Specific Data: first 2 octets contain the Company Identifier Code followed by the additional manufacturer specific data
-
-    private int numVal;
-
-    AD_TYPE(int numVal) {
-        this.numVal = numVal;
+    private String formatDataToCSV(String hrValue, String rrValue) {
+        if (startTime == -1)
+            startTime = System.currentTimeMillis();
+        if (rrValue.equals("0")) {
+            rrValue = " ";
+        }
+        String line =
+            "\n"
+            + String.valueOf((System.currentTimeMillis() - startTime)/1000f)
+            + "," + hrValue
+            + "," + rrValue;
+        Log.i("PolarH7", "Wrote: " + line);
+        return line;
     }
 
-    public int getNumVal() {
-        return numVal;
+    private void processDeviceDiscovered(final BluetoothDevice device, int rssi, byte[] scanRecord){
+        Map<AD_TYPE,byte[]> content = advertisementBytes2Map(scanRecord);
+        if( content.containsKey(AD_TYPE.GAP_ADTYPE_LOCAL_NAME_COMPLETE) ) {
+            String name = new String(content.get(AD_TYPE.GAP_ADTYPE_LOCAL_NAME_COMPLETE));
+            if (name.startsWith("Polar ")) {
+                bluetoothAdapter.getBluetoothLeScanner().stopScan(scanCallback);
+                device.connectGatt(context,false,bluetoothGattCallback, BluetoothDevice.TRANSPORT_LE);
+            }
+        }
     }
-};
 
     public static AD_TYPE getCode(byte type){
         try {
@@ -149,10 +195,6 @@ public enum AD_TYPE
         return adTypeHashMap;
     }
 
-    public final UUID HR_MEASUREMENT = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb");
-    public final UUID HR_SERVICE = UUID.fromString("0000180D-0000-1000-8000-00805f9b34fb");
-    public static final UUID DESCRIPTOR_CCC = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
-
     public ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
@@ -172,17 +214,6 @@ public enum AD_TYPE
             processDeviceDiscovered(device,rssi,scanRecord);
         }
     };
-
-    private void processDeviceDiscovered(final BluetoothDevice device, int rssi, byte[] scanRecord){
-        Map<AD_TYPE,byte[]> content = advertisementBytes2Map(scanRecord);
-        if( content.containsKey(AD_TYPE.GAP_ADTYPE_LOCAL_NAME_COMPLETE) ) {
-            String name = new String(content.get(AD_TYPE.GAP_ADTYPE_LOCAL_NAME_COMPLETE));
-            if (name.startsWith("Polar ")) {
-                bluetoothAdapter.getBluetoothLeScanner().stopScan(scanCallback);
-                device.connectGatt(context,false,bluetoothGattCallback, BluetoothDevice.TRANSPORT_LE);
-            }
-        }
-    }
 
     private BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
         @Override
@@ -232,34 +263,26 @@ public enum AD_TYPE
             if (characteristic.getUuid().equals(HR_MEASUREMENT)) {
                 byte[] data = characteristic.getValue();
                 int hrFormat = data[0] & 0x01;
-                boolean sensorContact = true;
-                final boolean contactSupported = !((data[0] & 0x06) == 0);
-                if( contactSupported ) {
-                    sensorContact = ((data[0] & 0x06) >> 1) == 3;
-                }
-                int energyExpended = (data[0] & 0x08) >> 3;
                 int rrPresent = (data[0] & 0x10) >> 4;
                 final int hrValue = (hrFormat == 1 ? data[1] + (data[2] << 8) : data[1]) & (hrFormat == 1 ? 0x0000FFFF : 0x000000FF);
                 updateHeartRateText(hrValue);
-                if( !contactSupported && hrValue == 0 ){
-                    // note does this apply to all sensors, also 3rd party
-                    sensorContact = false;
-                }
-                final boolean sensorContactFinal = sensorContact;
                 int offset = hrFormat + 2;
-                int energy = 0;
-                if (energyExpended == 1) {
-                    energy = (data[offset] & 0xFF) + ((data[offset + 1] & 0xFF) << 8);
+                if ((data[0] & 0x08) >> 3 == 1) {
                     offset += 2;
                 }
                 final ArrayList<Integer> rrs = new ArrayList<>();
+                int rrValue = 0;
                 if (rrPresent == 1) {
                     int len = data.length;
                     while (offset < len) {
-                        int rrValue = (int) ((data[offset] & 0xFF) + ((data[offset + 1] & 0xFF) << 8));
+                        rrValue = (int) ((data[offset] & 0xFF) + ((data[offset + 1] & 0xFF) << 8));
                         offset += 2;
                         rrs.add(rrValue);
                     }
+                }
+                //Log the information to the csv file after formatting
+                if (log) {
+                    fileCreator.appendLineToCSV(formatDataToCSV(String.valueOf(hrValue), String.valueOf(rrValue)));
                 }
             }
         }

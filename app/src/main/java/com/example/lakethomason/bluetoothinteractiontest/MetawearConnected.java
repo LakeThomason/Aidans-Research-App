@@ -133,7 +133,8 @@ public class MetawearConnected implements ServiceConnection{
         blinkLed(Led.Color.BLUE, 10);
         mLogButton.setText("Stop");
 //        state = MainActivity.State.Logging;  TODO:STATE
-        fileCreator = new FileCreator("MyDir");
+        fileCreator = new FileCreator("Lake", "Metawear");//TODO: introduce subject names
+        fileCreator.appendLineToCSV("Elapsed Time(s),x-axis(deg/s),y-axis(deg/s),z-axis(deg/s)");
 
         //setup the sensor
         sensorFusion.configure().mode(SensorFusionBosch.Mode.IMU_PLUS).commit();
@@ -159,7 +160,7 @@ public class MetawearConnected implements ServiceConnection{
         });
     }
 
-    public void stopLogging() {
+    public void stopLogging(final Runnable sendCSV) {
         logging.stop();
         sensorFusion.stop();
         sensorFusion.eulerAngles().stop();
@@ -182,7 +183,7 @@ public class MetawearConnected implements ServiceConnection{
                 blinkLed(Led.Color.GREEN, 10);
                 logging.clearEntries();
                 fileCreator.closeFile();
-                emailCSV(fileCreator.getFile().getAbsolutePath());
+                sendCSV.run();
                 return null;
             }
         });
@@ -201,7 +202,7 @@ public class MetawearConnected implements ServiceConnection{
         return line;
     }
 
-    public void emailCSV(String fileLocation) {
+    private void emailCSV() {
         Intent emailIntent = new Intent(Intent.ACTION_SEND);
         // set the type to 'email'
         emailIntent .setType("text/plain");
@@ -209,13 +210,17 @@ public class MetawearConnected implements ServiceConnection{
         String to[] = {"lakesainthomason@gmail.com"}; //TODO email input
         emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
         // convert file to uri
-        Uri uri = Uri.fromFile(fileCreator.getFile());
+        Uri uri = Uri.fromFile(fileCreator.getDir());
         // add the attachment
         emailIntent .putExtra(Intent.EXTRA_STREAM, uri);
         // add mail subject
-        emailIntent .putExtra(Intent.EXTRA_SUBJECT, fileCreator.getFile().getName());
+        emailIntent .putExtra(Intent.EXTRA_SUBJECT, fileCreator.getDir().getName());
         // create mail service chooser
         activity.startActivity(Intent.createChooser(emailIntent, "Save results"));
+    }
+
+    public File getFile() {
+        return fileCreator.getFile();
     }
 
     public void destroyService() {

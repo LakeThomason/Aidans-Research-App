@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.Uri;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -22,7 +23,7 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.concurrent.Callable;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -106,6 +107,8 @@ public class MainActivity extends AppCompatActivity {
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
         beginDiscovery();
+
+        mLogButton.setVisibility(View.VISIBLE);
     }
 
     @Override
@@ -199,22 +202,44 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-//    private BluetoothProfile.ServiceListener mProfileListener = new BluetoothProfile.ServiceListener() {
-//        public void onServiceConnected(int profile, BluetoothProfile proxy) {
-//            if (profile == BluetoothProfile.HEALTH) {
-//                mPolarDevice = (BluetoothHealth) proxy;}
-//        }
-//        public void onServiceDisconnected(int profile) {
-//            if (profile == BluetoothProfile.HEALTH) {
-//                mPolarDevice = null;}
-//        }
-//    };
     public void logButtonClicked() {
         //if (state == State.Logging)
-        if (mLogButton.getText().toString().equals("Log")) //temporary //TODO STATE
+        if (mLogButton.getText().toString().equals("Log")) {
+            //temporary //TODO STATE
             metawearConnectedState.beginLogging();
-        else
-        //else if (state == State.ReadyToLog || state == State.MetaConnected) //TODO remove second param once polar is setup
-            metawearConnectedState.stopLogging();
+            polarH7Device.beginLogging();
+            mLogButton.setText("Stop");
+        }
+        else {
+            //else if (state == State.ReadyToLog || state == State.MetaConnected) //TODO remove second param once polar is setup
+            polarH7Device.stopLogging();
+            metawearConnectedState.stopLogging(new Runnable() {
+                public void run() {
+                    sendCSVs();
+                }
+            });
+            mLogButton.setText("Log");
+        }
+    }
+
+    private void sendCSVs() {
+        Intent emailIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+        // set the type to 'email'
+        emailIntent .setType("text/plain");
+        // add email(s) here to whom you want to send email
+        String to[] = {"lakesainthomason@gmail.com"}; //TODO email input
+        emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
+        // create array to store files
+        ArrayList<Uri> uris = new ArrayList<Uri>();
+        // convert file to uri
+        uris.add(Uri.fromFile(polarH7Device.getFile()));
+        // convert file to uri
+        uris.add(Uri.fromFile(metawearConnectedState.getFile()));
+        // add the attachment
+        emailIntent .putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+        // add mail subject
+        emailIntent .putExtra(Intent.EXTRA_SUBJECT, "Saved files");
+        // create mail service chooser
+        MainActivity.this.startActivity(Intent.createChooser(emailIntent, "Save results"));
     }
 }
