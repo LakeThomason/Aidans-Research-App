@@ -29,8 +29,14 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.widget.Toast;
 
+import com.mbientlab.metawear.Data;
+import com.mbientlab.metawear.DataProducer;
 import com.mbientlab.metawear.MetaWearBoard;
+import com.mbientlab.metawear.Route;
+import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
+import com.mbientlab.metawear.builder.RouteBuilder;
+import com.mbientlab.metawear.builder.RouteComponent;
 import com.mbientlab.metawear.module.Led;
 
 import org.w3c.dom.Text;
@@ -41,6 +47,8 @@ import java.util.Set;
 
 import bolts.Continuation;
 import bolts.Task;
+
+import com.mbientlab.metawear.AsyncDataProducer;
 
 public class MainActivity extends AppCompatActivity implements ServiceConnection {
 
@@ -68,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private BtleService.LocalBinder serviceBinder;
 
     private BluetoothHealth mPolarDevice;
+    private AsyncDataProducer mMetawearProducer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,6 +91,41 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
         //set the device to be connected first
         mDeviceToBeConnected = "Metawear";
+
+        //Create the async data producer for the metawear device
+        mMetawearProducer = new AsyncDataProducer() {
+            @Override
+            public void start() {
+                mMetawearProducer.start();
+            }
+
+            @Override
+            public void stop() {
+                mMetawearProducer.stop();
+            }
+
+            @Override
+            public Task<Route> addRouteAsync(RouteBuilder builder) {
+                mMetawearProducer.addRouteAsync(new RouteBuilder() {
+                    @Override
+                    public void configure(RouteComponent source) {
+                        source.stream(new Subscriber() {
+                            @Override
+                            public void apply(Data data, Object... env) {
+                                Log.i("MainActivity", data.toString());
+                            }
+                        });
+                    }
+                });
+            }
+
+            @Override
+            public String name() {
+                return null;
+            }
+        };
+
+        mMetawearProducer.start();
 
         //prepare visual elements
         mHelpText =  (TextView) findViewById(R.id.HelpText);
@@ -315,6 +359,27 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             }
         }
     };
+
+    public void asycProducerCtrl(AsyncDataProducer producer) {
+        // Tells producer to begin creating data
+        producer.start();
+        // Puts producer back to standby mode
+        //producer.stop();
+    }
+
+    public void streamData(DataProducer producer) {
+        producer.addRouteAsync(new RouteBuilder() {
+            @Override
+            public void configure(RouteComponent source) {
+                source.stream(new Subscriber() {
+                    @Override
+                    public void apply(Data data, Object... env) {
+                        Log.i("MainActivity", data.toString());
+                    }
+                });
+            }
+        });
+    }
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
