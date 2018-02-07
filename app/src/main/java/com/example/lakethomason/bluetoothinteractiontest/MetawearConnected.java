@@ -18,6 +18,7 @@ import android.widget.CheckBox;
 import android.widget.Toast;
 
 import com.mbientlab.metawear.Data;
+import com.mbientlab.metawear.DeviceInformation;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.Subscriber;
@@ -62,7 +63,7 @@ public class MetawearConnected implements ServiceConnection{
         activity = _activity;
         easyToast = _easyToast;
         mMetawearCheckBox = (CheckBox) _activity.findViewById(R.id.metawearCheckBox);
-        mLogButton  = (Button) _activity.findViewById(R.id.logButton);
+        mLogButton  = (Button) _activity.findViewById(R.id.logMetaWearButton);
         startTime = -1;
         activity.getApplicationContext().bindService(new Intent(activity, BtleService.class), this, Context.BIND_AUTO_CREATE);
     }
@@ -102,10 +103,14 @@ public class MetawearConnected implements ServiceConnection{
                     blinkLed(Led.Color.GREEN, 10);
                     logging = board.getModule(Logging.class);
                     sensorFusion = board.getModule(SensorFusionBosch.class);
+                    if (logging == null || sensorFusion == null) {
+                        Log.d("Metawear", "A module was null");
+                    }
                 }
                 return null;
             }
         });
+
         //set an unexpected disconnect listener
         board.onUnexpectedDisconnect(new MetaWearBoard.UnexpectedDisconnectHandler() {
             @Override
@@ -117,24 +122,26 @@ public class MetawearConnected implements ServiceConnection{
                         easyToast.makeToast("Lost connection to the MetaWear Device");
                     }
                 });
-//                if (state == State.ReadyToLog || state == State.Logging) {
-//                    state = State.PolarConnected;
-//                }
-//                else {
-//                    state = State.Startup;
-//                }
-                //TODO: incorporate state
             }
         });
+
+        //get RSSI and some GATT characteristics (battery level, device information
+        board.readDeviceInformationAsync()
+                .continueWith(new Continuation<DeviceInformation, Void>() {
+                    @Override
+                    public Void then(Task<DeviceInformation> task) throws Exception {
+                        Log.i("MainActivity", "Device Information: " + task.getResult());
+                        return null;
+                    }
+                });
     }
 
     public void beginLogging() {
-        logging.clearEntries();
+        //logging.clearEntries();
         blinkLed(Led.Color.BLUE, 10);
         mLogButton.setText("Stop");
-//        state = MainActivity.State.Logging;  TODO:STATE
         fileCreator = new FileCreator("Lake", "Metawear");//TODO: introduce subject names
-        fileCreator.appendLineToCSV("Elapsed Time(s),x-axis(deg/s),y-axis(deg/s),z-axis(deg/s)");
+        fileCreator.appendLineToCSV("Elapsed Time(s),x-axis(deg),y-axis(deg),z-axis(deg)");
 
         //setup the sensor
         sensorFusion.configure().mode(SensorFusionBosch.Mode.IMU_PLUS).commit();
@@ -154,14 +161,14 @@ public class MetawearConnected implements ServiceConnection{
             public Void then(Task<Route> task) throws Exception {
                 sensorFusion.eulerAngles().start();
                 sensorFusion.start();
-                logging.start(true);
+                //logging.start(true);
                 return null;
             }
         });
     }
 
     public void stopLogging(final Runnable sendCSV) {
-        logging.stop();
+        //logging.stop();
         sensorFusion.stop();
         sensorFusion.eulerAngles().stop();
         blinkLed(Led.Color.BLUE, 5);
@@ -226,6 +233,10 @@ public class MetawearConnected implements ServiceConnection{
     public void destroyService() {
         // Unbind the service when the activity is destroyed
         activity.getApplicationContext().unbindService(this);
+    }
+
+    public void destroy() {
+        board.tearDown();
     }
 
     @Override

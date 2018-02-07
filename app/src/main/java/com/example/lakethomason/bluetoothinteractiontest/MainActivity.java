@@ -27,22 +27,16 @@ import java.util.concurrent.Callable;
 
 
 public class MainActivity extends AppCompatActivity {
-    private TextView mHelpText;
     private ListView mBluetoothList;
-    private Button mContinueButton;
-    private Button mLogButton;
-    private CheckBox mPolarH7CheckBox;
+    private Button mMetaWearLogButton;
+    private Button mPolarH7LogButton;
     private TextView mRefreshButton;
     private BluetoothAdapter mBluetoothAdapter;
+    private final static int ALL_PERMISSIONS = 1;
     private final static int REQUEST_ENABLE_BT = 2;
-    private final static int REQUEST_ENABLE_LOC = 3;
-    private final static int REQUEST_ENABLE_BTADMIN = 4;
-    private final static int REQUEST_WRITE_EXTERNAL_STORAGE = 5;
-    private final static int REQUEST_READ_EXTERNAL_STORAGE = 6;
     private List<String> macAddressList;
     private List<String> deviceList;
     private ArrayAdapter<String> arrayAdapter;
-    private BluetoothHealth mPolarDevice;
 
     private MetawearConnected metawearConnectedState;
     private PolarH7 polarH7Device;
@@ -81,10 +75,16 @@ public class MainActivity extends AppCompatActivity {
                 easyToast.makeToast("Refreshing bluetooth list..");
             }
         });
-        mLogButton.setOnClickListener(new View.OnClickListener() {
+        mMetaWearLogButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                logButtonClicked();
+                metaWearLogButtonClicked();
+            }
+        });
+        mPolarH7LogButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                polarH7LogButtonClicked();
             }
         });
 
@@ -107,8 +107,6 @@ public class MainActivity extends AppCompatActivity {
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
         beginDiscovery();
-
-        mLogButton.setVisibility(View.VISIBLE);
     }
 
     @Override
@@ -123,11 +121,9 @@ public class MainActivity extends AppCompatActivity {
      * Helper methods
      **********************************************************************************************/
     public void prepareDataMembers() {
-        mHelpText =  (TextView) findViewById(R.id.HelpText);
         mRefreshButton = (TextView) findViewById(R.id.refreshText);
-        mPolarH7CheckBox = (CheckBox) findViewById(R.id.polarh7CheckBox);
-        mContinueButton = (Button) findViewById(R.id.continueButton);
-        mLogButton  = (Button) findViewById(R.id.logButton);
+        mMetaWearLogButton  = (Button) findViewById(R.id.logMetaWearButton);
+        mPolarH7LogButton  = (Button) findViewById(R.id.logPolarButton);
         deviceList = new ArrayList<String>();
         macAddressList = new ArrayList<String>();
         mBluetoothList = (ListView) findViewById(R.id.LIbluetoothList);
@@ -147,21 +143,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void requestAllPermissions(){
-        ActivityCompat.requestPermissions(MainActivity.this,
-                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                REQUEST_ENABLE_LOC);
-        ActivityCompat.requestPermissions(MainActivity.this,
-                new String[]{Manifest.permission.BLUETOOTH},
-                REQUEST_ENABLE_BT);
-        ActivityCompat.requestPermissions(MainActivity.this,
-                new String[]{Manifest.permission.BLUETOOTH_ADMIN},
-                REQUEST_ENABLE_BTADMIN);
-        ActivityCompat.requestPermissions(MainActivity.this,
-                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                REQUEST_READ_EXTERNAL_STORAGE);
-        ActivityCompat.requestPermissions(MainActivity.this,
-                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                REQUEST_WRITE_EXTERNAL_STORAGE);
+        String[] permissions = {Manifest.permission.READ_EXTERNAL_STORAGE
+                , Manifest.permission.WRITE_EXTERNAL_STORAGE
+                , Manifest.permission.ACCESS_COARSE_LOCATION
+                , Manifest.permission.BLUETOOTH
+                , Manifest.permission.BLUETOOTH_ADMIN};
+        ActivityCompat.requestPermissions(MainActivity.this, permissions, ALL_PERMISSIONS);
     }
 
     /***********************************************************************************************
@@ -178,7 +165,6 @@ public class MainActivity extends AppCompatActivity {
         }
         //TODO check what kind of device is being clicked
         //TODO check if the device is already connected
-        //TODO connect to the device if the above are false
     }
 
 
@@ -193,32 +179,45 @@ public class MainActivity extends AppCompatActivity {
                 String deviceName = device.getName();
                 String deviceHardwareAddress = device.getAddress(); // MAC address
                 //make sure its not already in the list if discovery is started again
-                if (deviceName != null) {
+                if (deviceName != null && !deviceList.contains(deviceName)) {
                     deviceList.add(deviceName);
                     macAddressList.add(deviceHardwareAddress);
                     arrayAdapter.notifyDataSetChanged();
+                    if (deviceName.equals("MetaWear")) {
+                        easyToast.makeToast("Trying to connect with " + deviceName);
+                        metawearConnectedState.connectToMetawearDevice(deviceHardwareAddress, deviceName);
+                    }
                 }
             }
         }
     };
 
-    public void logButtonClicked() {
+    public void metaWearLogButtonClicked() {
         //if (state == State.Logging)
-        if (mLogButton.getText().toString().equals("Log")) {
-            //temporary //TODO STATE
+        if (mMetaWearLogButton.getText().toString().equals("Log Meta")) {
             metawearConnectedState.beginLogging();
-            polarH7Device.beginLogging();
-            mLogButton.setText("Stop");
+            mMetaWearLogButton.setText("Stop");
         }
         else {
-            //else if (state == State.ReadyToLog || state == State.MetaConnected) //TODO remove second param once polar is setup
-            polarH7Device.stopLogging();
             metawearConnectedState.stopLogging(new Runnable() {
                 public void run() {
-                    sendCSVs();
+                    //sendCSVs();
                 }
             });
-            mLogButton.setText("Log");
+            mMetaWearLogButton.setText("Log Meta");
+        }
+    }
+
+    public void polarH7LogButtonClicked() {
+        //if (state == State.Logging)
+        if (mPolarH7LogButton.getText().toString().equals("Log Polar")) {
+
+            polarH7Device.beginLogging();
+            mPolarH7LogButton.setText("Stop");
+        }
+        else {
+            polarH7Device.stopLogging();
+            mPolarH7LogButton.setText("Log Polar");
         }
     }
 

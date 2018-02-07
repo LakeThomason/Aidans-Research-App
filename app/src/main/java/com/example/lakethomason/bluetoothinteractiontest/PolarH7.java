@@ -75,7 +75,6 @@ public class PolarH7 {
     private EasyToast easyToast;
 
     private CheckBox mPolarH7CheckBox;
-    private Button mLogButton;
     private TextView mHeartRateText;
 
     private BluetoothAdapter bluetoothAdapter;
@@ -98,7 +97,6 @@ public class PolarH7 {
         context = activity.getApplicationContext();
 
         mPolarH7CheckBox = activity.findViewById(R.id.polarh7CheckBox);
-        mLogButton = activity.findViewById(R.id.logButton);
         mHeartRateText = activity.findViewById(R.id.heartRateText);
     }
 
@@ -120,7 +118,13 @@ public class PolarH7 {
 
     private void updateHeartRateText(final int value) {
         activity.runOnUiThread(new Runnable() {
-            public void run() {mHeartRateText.setText(String.valueOf(value));}
+            public void run() {
+                mHeartRateText.setVisibility(View.VISIBLE);
+                mHeartRateText.setText(String.valueOf(value));
+                if (value == 0) {
+                    mHeartRateText.setVisibility(View.INVISIBLE);
+                }
+            }
         });
     }
 
