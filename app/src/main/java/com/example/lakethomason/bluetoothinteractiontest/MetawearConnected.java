@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
@@ -15,6 +16,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.mbientlab.metawear.Data;
@@ -29,12 +31,14 @@ import com.mbientlab.metawear.data.EulerAngles;
 import com.mbientlab.metawear.module.Led;
 import com.mbientlab.metawear.module.Logging;
 import com.mbientlab.metawear.module.SensorFusionBosch;
+import com.mbientlab.metawear.module.Settings;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.concurrent.Callable;
 
 import bolts.Continuation;
 import bolts.Task;
@@ -52,6 +56,8 @@ public class MetawearConnected implements ServiceConnection{
 
     private CheckBox mMetawearCheckBox;
     private Button mLogButton;
+    private TextView mBattery;
+    private TextView mSignal;
 
     private long startTime;
 
@@ -62,8 +68,9 @@ public class MetawearConnected implements ServiceConnection{
     public MetawearConnected(Activity _activity, EasyToast _easyToast) {
         activity = _activity;
         easyToast = _easyToast;
-        mMetawearCheckBox = (CheckBox) _activity.findViewById(R.id.metawearCheckBox);
-        mLogButton  = (Button) _activity.findViewById(R.id.logMetaWearButton);
+        mMetawearCheckBox =  activity.findViewById(R.id.metawearCheckBox);
+        mLogButton  = activity.findViewById(R.id.logMetaWearButton);
+        mSignal = activity.findViewById(R.id.signalMetaWear);
         startTime = -1;
         activity.getApplicationContext().bindService(new Intent(activity, BtleService.class), this, Context.BIND_AUTO_CREATE);
     }
@@ -103,6 +110,7 @@ public class MetawearConnected implements ServiceConnection{
                     blinkLed(Led.Color.GREEN, 10);
                     logging = board.getModule(Logging.class);
                     sensorFusion = board.getModule(SensorFusionBosch.class);
+                    new updateRSSI().execute();
                     if (logging == null || sensorFusion == null) {
                         Log.d("Metawear", "A module was null");
                     }
@@ -119,21 +127,12 @@ public class MetawearConnected implements ServiceConnection{
                 activity.runOnUiThread(new Runnable() {
                     public void run() {
                         mMetawearCheckBox.setChecked(false);
+                        mSignal.setText("Signal: ");
                         easyToast.makeToast("Lost connection to the MetaWear Device");
                     }
                 });
             }
         });
-
-        //get RSSI and some GATT characteristics (battery level, device information
-        board.readDeviceInformationAsync()
-                .continueWith(new Continuation<DeviceInformation, Void>() {
-                    @Override
-                    public Void then(Task<DeviceInformation> task) throws Exception {
-                        Log.i("MainActivity", "Device Information: " + task.getResult());
-                        return null;
-                    }
-                });
     }
 
     public void beginLogging() {
@@ -207,6 +206,88 @@ public class MetawearConnected implements ServiceConnection{
                         + "," + String.format("%6f",data.value(EulerAngles.class).roll())
                         + "," + String.format("%6f",data.value(EulerAngles.class).yaw());
         return line;
+    }
+
+    private class updateRSSI extends AsyncTask<Void, Void, Void> {
+        protected Void doInBackground(Void... arg0) {
+            while (board.isConnected()) {
+                try {
+                    displayBatteryAndSignal();
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+    }
+
+    private void displayBatteryAndSignal() {
+        //get RSSI and some GATT characteristics (battery level, device information
+
+        board.readRssiAsync()
+                .continueWith(new Continuation<Integer, Void>() {
+                    @Override
+                    public Void then(Task<Integer> task) throws Exception {
+                        Log.i("MainActivity", "Signal Strength: " + task.getResult());
+                        final Task<Integer> mTask = task;
+                        activity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mSignal.setText("Signal: " + mTask.getResult());
+                            }
+                        });
+                        return null;
+                    }}
+                );
+
+        //Battery level reading example 1
+        //Uses settings module to attempt to read battery level
+        //Always outputs 0
+
+//        final Settings settings = board.getModule(Settings.class);
+//        settings.battery().addRouteAsync(new RouteBuilder() {
+//            @Override
+//            public void configure(RouteComponent source) {
+//                source.stream(new Subscriber() {
+//                    @Override
+//                    public void apply(Data data, Object ... env) {
+//                        Log.i("MainActivity", "battery state = " + data.value(Settings.BatteryState.class));
+//                        mBattery.setText(
+//                                "Battery: "
+//                                + data.value(Settings.BatteryState.class).charge
+//                                + "%" );
+//                    }
+//                });
+//            }
+//        }).continueWith(new Continuation<Route, Void>() {
+//            @Override
+//            public Void then(Task<Route> task) throws Exception {
+//                settings.battery().read();
+//                return null;
+//            }
+//        });
+//
+
+        //Second battery level read attempt
+        //Utilizes onboard operations to attempt to read battery levels
+        //Always outputs 0
+
+//        board.readBatteryLevelAsync()
+//                .continueWith(new Continuation<Byte, Void>() {
+//                    @Override
+//                    public Void then(Task<Byte> task) throws Exception {
+//                        Log.i("MainActivity", "Battery Charge: " + task.getResult());
+//                        final Task<Byte> mTask = task;
+////                        activity.runOnUiThread(new Runnable() {
+////                            @Override
+////                            public void run() {
+////                                mBattery.setText("Battery: " + mTask.getResult() + "%" );
+////                            }
+////                        });
+//                        return null;
+//                    }}
+//                );
     }
 
     private void emailCSV() {

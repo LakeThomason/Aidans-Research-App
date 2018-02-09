@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private Button mMetaWearLogButton;
     private Button mPolarH7LogButton;
     private TextView mRefreshButton;
+    private Button mSubjectsListButton;
     private BluetoothAdapter mBluetoothAdapter;
     private final static int ALL_PERMISSIONS = 1;
     private final static int REQUEST_ENABLE_BT = 2;
@@ -60,7 +61,13 @@ public class MainActivity extends AppCompatActivity {
 
         mBluetoothAdapter.getBluetoothLeScanner().startScan(polarH7Device.scanCallback);
 
-        //prepare for listitem clicks
+        //prepare onclick listeners
+        mSubjectsListButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, SubjectListActivity.class));
+            }
+        });
         mBluetoothList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -124,6 +131,7 @@ public class MainActivity extends AppCompatActivity {
         mRefreshButton = (TextView) findViewById(R.id.refreshText);
         mMetaWearLogButton  = (Button) findViewById(R.id.logMetaWearButton);
         mPolarH7LogButton  = (Button) findViewById(R.id.logPolarButton);
+        mSubjectsListButton = findViewById(R.id.testSubjectsButton);
         deviceList = new ArrayList<String>();
         macAddressList = new ArrayList<String>();
         mBluetoothList = (ListView) findViewById(R.id.LIbluetoothList);

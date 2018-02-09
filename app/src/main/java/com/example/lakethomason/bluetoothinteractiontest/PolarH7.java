@@ -76,6 +76,8 @@ public class PolarH7 {
 
     private CheckBox mPolarH7CheckBox;
     private TextView mHeartRateText;
+    private TextView mBattery;
+    private TextView mSignal;
 
     private BluetoothAdapter bluetoothAdapter;
     private Context context;
@@ -83,9 +85,12 @@ public class PolarH7 {
     private boolean log;
     private long startTime;
 
-    public final UUID HR_MEASUREMENT = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb");
-    public final UUID HR_SERVICE = UUID.fromString("0000180D-0000-1000-8000-00805f9b34fb");
-    public static final UUID DESCRIPTOR_CCC = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+
+    private final UUID BATTERY_PERCENT = UUID.fromString("00002A19-0000-1000-8000-00805f9b34fb");
+    private final UUID BATTERY_SERVICE = UUID.fromString("0000180F-0000-1000-8000-00805f9b34fb");
+    private final UUID HR_MEASUREMENT = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb");
+    private final UUID HR_SERVICE = UUID.fromString("0000180D-0000-1000-8000-00805f9b34fb");
+    private static final UUID DESCRIPTOR_CCC = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
 
     public PolarH7(Activity _activity, EasyToast _easyToast, BluetoothAdapter adapter) {
@@ -96,6 +101,8 @@ public class PolarH7 {
 
         context = activity.getApplicationContext();
 
+        mBattery = activity.findViewById(R.id.batteryPolar);
+        mSignal = activity.findViewById(R.id.signalPolar);
         mPolarH7CheckBox = activity.findViewById(R.id.polarh7CheckBox);
         mHeartRateText = activity.findViewById(R.id.heartRateText);
     }
@@ -225,6 +232,7 @@ public class PolarH7 {
             super.onConnectionStateChange(gatt, status, newState);
             if (newState == BluetoothGatt.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
                 gatt.discoverServices();
+                updatePolarCheckBox(true);
             }
             else if(newState == BluetoothGatt.STATE_DISCONNECTED){
                 bluetoothAdapter.getBluetoothLeScanner().startScan(scanCallback);
@@ -237,14 +245,17 @@ public class PolarH7 {
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             super.onServicesDiscovered(gatt, status);
             for (BluetoothGattService gattService : gatt.getServices()) {
-                if( gattService.getUuid().equals(HR_SERVICE) ){
+                if( gattService.getUuid().equals(HR_SERVICE) || gattService.getUuid().equals(BATTERY_SERVICE)){
                     for (BluetoothGattCharacteristic characteristic : gattService.getCharacteristics()) {
                         if( characteristic.getUuid().equals(HR_MEASUREMENT) ){
                             BluetoothGattDescriptor descriptor = characteristic.getDescriptor(DESCRIPTOR_CCC);
                             gatt.setCharacteristicNotification(characteristic, true);
                             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
                             gatt.writeDescriptor(descriptor);
-                            updatePolarCheckBox(true);
+                        }
+                        if( characteristic.getUuid().equals(BATTERY_PERCENT) ){
+                            Log.i("MainActivity", "Found battery percent char");
+                            gatt.setCharacteristicNotification(characteristic, true);
                         }
                     }
                 }
@@ -254,6 +265,17 @@ public class PolarH7 {
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
+            if (characteristic.getUuid().equals(BATTERY_PERCENT)) {
+                int format = BluetoothGattCharacteristic.FORMAT_UINT8;
+                final int batteryLevel = characteristic.getIntValue(format, 0);
+                Log.i("MainActivity", "Battery Level polar: " + batteryLevel);
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mBattery.setText("Battery: " + batteryLevel);
+                    }
+                });
+            }
         }
 
         @Override
@@ -288,6 +310,17 @@ public class PolarH7 {
                 if (log) {
                     fileCreator.appendLineToCSV(formatDataToCSV(String.valueOf(hrValue), String.valueOf(rrValue)));
                 }
+            }
+            if (characteristic.getUuid().equals(BATTERY_PERCENT)) {
+                int format = BluetoothGattCharacteristic.FORMAT_UINT8;
+                final int batteryLevel = characteristic.getIntValue(format, 0);
+                Log.i("MainActivity", "Battery Level polar: " + batteryLevel);
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mBattery.setText("Battery: " + batteryLevel);
+                    }
+                });
             }
         }
 

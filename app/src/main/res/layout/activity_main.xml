@@ -6,6 +6,32 @@
     android:layout_height="match_parent"
     tools:context="com.example.lakethomason.bluetoothinteractiontest.MainActivity">
 
+    <TextView
+        android:id="@+id/signalPolar"
+        android:layout_width="128dp"
+        android:layout_height="31dp"
+        android:text="Signal: "
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/logPolarButton"
+        android:layout_marginRight="50dp"
+        app:layout_constraintRight_toRightOf="parent"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@+id/signalMetaWear"
+        app:layout_constraintVertical_bias="0.782" />
+
+    <TextView
+        android:id="@+id/batteryPolar"
+        android:layout_width="138dp"
+        android:layout_height="30dp"
+        android:text="Battery: "
+        android:layout_marginBottom="19dp"
+        app:layout_constraintBottom_toTopOf="@+id/logMetaWearButton"
+        android:layout_marginLeft="51dp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@+id/signalPolar"
+        android:layout_marginRight="8dp"
+        app:layout_constraintHorizontal_bias="0.0" />
+
     <CheckBox
         android:id="@+id/metawearCheckBox"
         android:layout_width="wrap_content"
@@ -29,7 +55,7 @@
         android:layout_marginLeft="8dp"
         app:layout_constraintHorizontal_bias="0.746"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginTop="63dp"
+        android:layout_marginTop="80dp"
         android:clickable="false"/>
 
     <TextView
@@ -44,7 +70,7 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintHorizontal_bias="0.172"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginTop="63dp" />
+        android:layout_marginTop="80dp" />
 
     <ListView
         android:id="@+id/LIbluetoothList"
@@ -77,11 +103,11 @@
 
     <Button
         android:id="@+id/logMetaWearButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="93dp"
+        android:layout_height="48dp"
         android:layout_marginLeft="8dp"
         android:layout_marginRight="8dp"
-        android:layout_marginTop="67dp"
+        android:layout_marginTop="50dp"
         android:text="Log Meta"
         android:visibility="visible"
         app:layout_constraintHorizontal_bias="0.156"
@@ -105,7 +131,7 @@
         android:id="@+id/heartRateText"
         android:layout_width="63dp"
         android:layout_height="30dp"
-        android:layout_marginBottom="127dp"
+        android:layout_marginBottom="110dp"
         android:layout_marginLeft="8dp"
         android:layout_marginRight="8dp"
         android:text="0"
@@ -123,7 +149,52 @@
         android:text="Log Polar"
         app:layout_constraintTop_toTopOf="parent"
         android:layout_marginTop="161dp"
-        android:layout_marginRight="50dp"
+        android:layout_marginRight="42dp"
         app:layout_constraintRight_toRightOf="parent" />
+
+    <TextView
+        android:id="@+id/batteryMetaWear"
+        android:layout_width="143dp"
+        android:layout_height="24dp"
+        android:text="Battery: "
+        android:layout_marginTop="-1dp"
+        app:layout_constraintTop_toBottomOf="@+id/textView"
+        android:layout_marginLeft="8dp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        android:layout_marginRight="8dp"
+        app:layout_constraintHorizontal_bias="0.191"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/textView2"
+        app:layout_constraintVertical_bias="0.0"
+        app:layout_constraintRight_toRightOf="parent" />
+
+    <TextView
+        android:id="@+id/signalMetaWear"
+        android:layout_width="118dp"
+        android:layout_height="26dp"
+        android:text="Signal:"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="42dp"
+        android:layout_marginRight="60dp"
+        app:layout_constraintRight_toRightOf="parent"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/logPolarButton"
+        app:layout_constraintVertical_bias="0.0" />
+
+    <Button
+        android:id="@+id/testSubjectsButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Subjects"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@+id/batteryPolar"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/LIbluetoothList"
+        android:layout_marginLeft="8dp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        android:layout_marginRight="8dp"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintHorizontal_bias="0.501"
+        app:layout_constraintVertical_bias="0.488" />
 
 </android.support.constraint.ConstraintLayout>

@@ -16,6 +16,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <service android:name="com.mbientlab.metawear.android.BtleService" />
+
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -23,5 +24,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".SubjectListActivity"
+            android:label="@string/title_activity_subject_list"
+            android:theme="@style/AppTheme.NoActionBar"></activity>
     </application>
+
 </manifest>
