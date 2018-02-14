@@ -35,6 +35,7 @@ public class TestSubject {
         mMetaWearFile = null;
         mPolarFile = null;
     }
+
     public String generateName() {
         return Beginning[rand.nextInt(Beginning.length)] +
                 Middle[rand.nextInt(Middle.length)] +

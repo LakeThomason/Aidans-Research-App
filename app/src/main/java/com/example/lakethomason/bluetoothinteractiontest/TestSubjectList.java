@@ -30,7 +30,12 @@ public class TestSubjectList {
         testSubjects.add(new TestSubject(identifier, age, weight));
     }
 
-    public void removeSubject(int pos) {
+    public void addSubjects(List<TestSubject> subjects) {
+        testSubjects.addAll(subjects);
+    }
+
+    public void removeSubject(int pos)
+    {
         testSubjects.remove(pos);
     }
 
