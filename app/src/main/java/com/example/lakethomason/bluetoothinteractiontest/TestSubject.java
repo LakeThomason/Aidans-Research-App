@@ -49,4 +49,8 @@ public class TestSubject {
     public void addMetaWearTest(File metaWearFile) {
         mMetaWearFile = metaWearFile;
     }
+
+    public String getIdentifier() {
+        return mIdentifier;
+    }
 }

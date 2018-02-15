@@ -1,5 +1,6 @@
 package com.example.lakethomason.bluetoothinteractiontest;
 
+import android.app.Activity;
 import android.app.Dialog;
 import android.app.DialogFragment;
 import android.app.Fragment;
@@ -14,6 +15,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -21,52 +23,55 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
 
-public class SubjectListActivity extends AppCompatActivity {
+public class SubjectListActivity extends AppCompatActivity implements AddSubjectDialogFragment.NoticeDialogListener {
 
     private ArrayAdapter<String> arrayAdapter;
     private ListView mSubjectListView;
     private TestSubjectList mSubjectList;
+    private EasyToast easyToast;
+    private AddSubjectDialogFragment AddSubjectDF;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_subject_list);
 
+        easyToast = new EasyToast(SubjectListActivity.this);
+
         mSubjectList = new TestSubjectList();
-
         mSubjectListView = findViewById(R.id.subjectListView);
-        arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mSubjectList.getSubjectList());
+        arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mSubjectList.nameList);
         mSubjectListView.setAdapter(arrayAdapter);
+        AddSubjectDF = new AddSubjectDialogFragment();
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                FireMissilesDialogFragment f = new FireMissilesDialogFragment();
-                f.show(getFragmentManager(), "SubjectInput");
+                AddSubjectDF.show(getFragmentManager(), "SubjectInput");
             }
         });
     }
-    public static class FireMissilesDialogFragment extends DialogFragment {
-        @Override
-        public Dialog onCreateDialog(Bundle savedInstanceState) {
-            // Use the Builder class for convenient dialog construction
-            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-            builder.setMessage("Enter the required attributes *")
-                    .setPositiveButton("Add Subject", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int id) {
-                            // FIRE ZE MISSILES!
-                        }
-                    })
-                    .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int id) {
-                            // User cancelled the dialog
-                        }
-                    })
-                    .setView(R.layout.addsubjectview); //left off here :D
-            // Create the AlertDialog object and return it
-            return builder.create();
+    @Override
+    public void onDialogPositiveClick(String age, String weight, String identifier) {
+        String id = identifier;
+        if (age.equals("") || weight.equals("")) {
+            easyToast.makeToast("Do not leave required fields blank");
+            AddSubjectDF.dismiss();
+            AddSubjectDF.show(getFragmentManager(), "SubjectInput");
+            return;
         }
+        if (id.equals("")) {
+            id = null;
+        }
+        mSubjectList.addSubject(id, Integer.valueOf(weight), Integer.valueOf(age));
+        arrayAdapter.notifyDataSetChanged();
+        easyToast.makeToast("Test Subject Added successfully");
+    }
+
+    @Override
+    public void onDialogNegativeClick() {
+        easyToast.makeToast("Cancelled");
     }
 }
 

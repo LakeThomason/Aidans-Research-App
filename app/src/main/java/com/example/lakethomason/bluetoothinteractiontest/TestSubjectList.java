@@ -13,21 +13,27 @@ import java.util.Random;
  */
 
 public class TestSubjectList {
+    public ArrayList<String> nameList;
     private ArrayList<TestSubject> testSubjects;
 
     TestSubjectList() {
         testSubjects = new ArrayList<TestSubject>();
+        nameList = new ArrayList<String>();
         generateTestSubjects(50);
     }
 
     private void generateTestSubjects(int numSubjects) {
         for (int i = 0; i < numSubjects; i++){
-            testSubjects.add(new TestSubject());
+            TestSubject testSubject = new TestSubject();
+            testSubjects.add(testSubject);
+            nameList.add(testSubject.getIdentifier());
         }
     }
 
     public void addSubject(String identifier, int weight, int age) {
-        testSubjects.add(new TestSubject(identifier, age, weight));
+        TestSubject testSubject = new TestSubject(identifier, age, weight);
+        testSubjects.add(testSubject);
+        nameList.add(testSubject.getIdentifier());
     }
 
     public void addSubjects(List<TestSubject> subjects) {
