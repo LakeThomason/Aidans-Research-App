@@ -36,7 +36,7 @@ public class AddSubjectDialogFragment extends DialogFragment {
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         final LayoutInflater inflater = getActivity().getLayoutInflater();
-        View dialog = inflater.inflate(R.layout.addsubjectview, null);
+        View dialog = inflater.inflate(R.layout.add_subject_view, null);
         final EditText weightEditText = dialog.findViewById(R.id.weightEditText);
         final EditText ageEditText = dialog.findViewById(R.id.ageEditText);
         final EditText identifierEditText = dialog.findViewById(R.id.identifierEditText);
