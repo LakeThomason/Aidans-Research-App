@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.IBinder;
+import android.os.Parcelable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -48,7 +49,7 @@ import bolts.Task;
  * Created by lakethomason on 1/11/2018.
  */
 
-public class MetawearConnected implements ServiceConnection{
+public class MetawearConnected implements ServiceConnection {
     private Logging logging;
     private SensorFusionBosch sensorFusion;
     private MetaWearBoard board;
@@ -136,7 +137,7 @@ public class MetawearConnected implements ServiceConnection{
     }
 
     public void beginLogging() {
-        //logging.clearEntries();
+        logging.clearEntries();
         blinkLed(Led.Color.BLUE, 10);
         mLogButton.setText("Stop");
         fileCreator = new FileCreator("Lake", "Metawear");//TODO: introduce subject names

@@ -30,6 +30,10 @@ public class TestSubjectList {
         }
     }
 
+    public TestSubject getSubject(int pos) {
+        return testSubjects.get(pos);
+    }
+
     public void addSubject(String identifier, int weight, int age) {
         TestSubject testSubject = new TestSubject(identifier, age, weight);
         testSubjects.add(testSubject);
@@ -43,14 +47,11 @@ public class TestSubjectList {
     public void removeSubject(int pos)
     {
         testSubjects.remove(pos);
+        nameList.remove(pos);
     }
 
-    public void addPolarTestToSubject(int pos, File polarFile) {
-        testSubjects.get(pos).addPolarTest(polarFile);
-    }
-
-    public void addMetaWearTestToSubject(int pos, File metaWearFile) {
-        testSubjects.get(pos).addMetaWearTest(metaWearFile);
+    public void addTestToSubject(int pos, File file, int testNum) {
+        testSubjects.get(pos).addTest(file, testNum);
     }
 
     public ArrayList<String> getSubjectList() {
