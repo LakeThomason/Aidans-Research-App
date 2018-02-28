@@ -190,7 +190,7 @@ public class MetawearConnected implements ServiceConnection {
                 blinkLed(Led.Color.GREEN, 10);
                 logging.clearEntries();
                 fileCreator.closeFile();
-                sendCSV.run();
+                //sendCSV.run();
                 return null;
             }
         });
@@ -241,71 +241,6 @@ public class MetawearConnected implements ServiceConnection {
                         return null;
                     }}
                 );
-
-        //Battery level reading example 1
-        //Uses settings module to attempt to read battery level
-        //Always outputs 0
-
-//        final Settings settings = board.getModule(Settings.class);
-//        settings.battery().addRouteAsync(new RouteBuilder() {
-//            @Override
-//            public void configure(RouteComponent source) {
-//                source.stream(new Subscriber() {
-//                    @Override
-//                    public void apply(Data data, Object ... env) {
-//                        Log.i("MainActivity", "battery state = " + data.value(Settings.BatteryState.class));
-//                        mBattery.setText(
-//                                "Battery: "
-//                                + data.value(Settings.BatteryState.class).charge
-//                                + "%" );
-//                    }
-//                });
-//            }
-//        }).continueWith(new Continuation<Route, Void>() {
-//            @Override
-//            public Void then(Task<Route> task) throws Exception {
-//                settings.battery().read();
-//                return null;
-//            }
-//        });
-//
-
-        //Second battery level read attempt
-        //Utilizes onboard operations to attempt to read battery levels
-        //Always outputs 0
-
-//        board.readBatteryLevelAsync()
-//                .continueWith(new Continuation<Byte, Void>() {
-//                    @Override
-//                    public Void then(Task<Byte> task) throws Exception {
-//                        Log.i("MainActivity", "Battery Charge: " + task.getResult());
-//                        final Task<Byte> mTask = task;
-////                        activity.runOnUiThread(new Runnable() {
-////                            @Override
-////                            public void run() {
-////                                mBattery.setText("Battery: " + mTask.getResult() + "%" );
-////                            }
-////                        });
-//                        return null;
-//                    }}
-//                );
-    }
-
-    private void emailCSV() {
-        Intent emailIntent = new Intent(Intent.ACTION_SEND);
-        // set the type to 'email'
-        emailIntent .setType("text/plain");
-        // add email(s) here to whom you want to send email
-        String to[] = {"lakesainthomason@gmail.com"}; //TODO email input
-        emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
-        // convert file to uri
-        Uri uri = Uri.fromFile(fileCreator.getDir());
-        // add the attachment
-        emailIntent .putExtra(Intent.EXTRA_STREAM, uri);
-        // add mail subject
-        emailIntent .putExtra(Intent.EXTRA_SUBJECT, fileCreator.getDir().getName());
-        // create mail service chooser
-        activity.startActivity(Intent.createChooser(emailIntent, "Save results"));
     }
 
     public File getFile() {

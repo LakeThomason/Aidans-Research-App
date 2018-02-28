@@ -15,7 +15,18 @@ public class TestSubject implements Parcelable {
     public int mAge;
     public int mWeight;
     public String mIdentifier;
-    public ArrayList<File> mFileList;
+    public File[] mFileList;
+    /*
+     * mFileList structure
+     * 0 PolarH7 Test
+     * 1 MetaWear Test
+     * 2 PolarH7 Test
+     * 3 PolarH7 Test
+     * 4 MetaWear Test
+     * 5 PolarH7 Test
+     * 6 PolarH7 Test
+     * Tests 1&2, 4&5 are performed at the same time
+     */
 
     private String[] Beginning = { "Kr", "Ca", "Ra", "Mrok", "Cru", "Ray", "Bre", "Zed", "Drak", "Mor", "Jag", "Mer", "Jar", "Mjol", "Zork", "Mad", "Cry", "Zur", "Creo", "Azak", "Azur", "Rei", "Cro", "Mar", "Luk" };
     private String[] Middle = { "air", "ir", "mi", "sor", "mee", "clo","red", "cra", "ark", "arc", "miri", "lori", "cres", "mur", "zer","marac", "zoir", "slamar", "salmar", "urak" };
@@ -27,21 +38,21 @@ public class TestSubject implements Parcelable {
         mAge = age;
         mWeight = weight;
         mIdentifier = identifier != null ? identifier : generateName();
-        mFileList = new ArrayList<File>(5);
+        mFileList = new File[7];
     }
 
     TestSubject(Parcel in) {
         this.mAge = in.readInt();
         this.mWeight = in.readInt();
         this.mIdentifier = in.readString();
-        this.mFileList = in.readArrayList(TestSubject.class.getClassLoader());
+        this.mFileList = (File[]) in.readArray(TestSubject.class.getClassLoader());
     }
 
     TestSubject() {
         mAge = new Random().nextInt(100);
         mWeight = new Random().nextInt(500);
         mIdentifier = generateName();
-        mFileList = new ArrayList<File>(5);
+        mFileList = new File[7];
     }
 
     public String generateName() {
@@ -51,7 +62,44 @@ public class TestSubject implements Parcelable {
     }
 
     public void addTest(File file, int pos) {
-        mFileList.add(pos, file);
+        mFileList[pos] = file;
+    }
+
+    public File getTest(int test) {
+        return mFileList[test];
+    }
+
+    public File[] getTests() {
+        return mFileList;
+    }
+
+    public Boolean getTestAvailability(int index) {
+        return mFileList[index] == null;
+    }
+
+    public ArrayList<Boolean> getTestsAvailability() {
+        ArrayList<Boolean> fileExistsList = new ArrayList<Boolean>(mFileList.length);
+        for (int i = 0; i < mFileList.length; i++) {
+            if (mFileList[i] != null)
+                fileExistsList.add(i, true);
+            else
+                fileExistsList.add(i, false);
+        }
+        return fileExistsList;
+    }
+
+    public void removeTest(int test) {
+        if (mFileList[test] != null) {
+            mFileList[test].delete();
+        }
+        mFileList[test] = null;
+    }
+
+    public void removeAllTests() {
+        for (File file : mFileList) {
+            file.delete();
+        }
+        mFileList = new File[7];
     }
 
     public String getIdentifier() {
@@ -79,6 +127,6 @@ public class TestSubject implements Parcelable {
         out.writeInt(this.mAge);
         out.writeInt(this.mWeight);
         out.writeString(this.mIdentifier);
-        out.writeList(this.mFileList);
+        out.writeArray(this.mFileList);
     }
 }

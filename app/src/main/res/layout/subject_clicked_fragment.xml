@@ -11,22 +11,22 @@
         android:layout_height="match_parent">
 
         <Button
-            android:id="@+id/button13"
+            android:id="@+id/removeButton5"
             android:layout_width="wrap_content"
             android:layout_height="55dp"
             android:text="Remove"
             android:layout_marginTop="-11dp"
-            app:layout_constraintTop_toBottomOf="@+id/button11"
+            app:layout_constraintTop_toBottomOf="@+id/removeButton4"
             android:layout_marginRight="24dp"
             app:layout_constraintRight_toRightOf="parent" />
 
         <Button
-            android:id="@+id/button11"
+            android:id="@+id/removeButton4"
             android:layout_width="wrap_content"
             android:layout_height="55dp"
             android:layout_marginTop="0dp"
             android:text="Remove"
-            app:layout_constraintTop_toBottomOf="@+id/button9"
+            app:layout_constraintTop_toBottomOf="@+id/removeButton3"
             android:layout_marginRight="24dp"
             app:layout_constraintRight_toRightOf="parent" />
 
@@ -38,126 +38,126 @@
             android:layout_marginTop="292dp"
             android:backgroundTint="@android:color/holo_red_light"
             android:text="Remove Subject"
-            app:layout_constraintRight_toLeftOf="@+id/button14"
+            app:layout_constraintRight_toLeftOf="@+id/downloadButton"
             app:layout_constraintTop_toTopOf="parent" />
 
         <Button
-            android:id="@+id/button2"
+            android:id="@+id/logButton2"
             android:layout_width="142dp"
             android:layout_height="55dp"
             android:layout_marginTop="0dp"
             android:text="Log 1st Activity"
-            app:layout_constraintTop_toBottomOf="@+id/button3"
-            app:layout_constraintRight_toLeftOf="@+id/button7"
+            app:layout_constraintTop_toBottomOf="@+id/logButton1"
+            app:layout_constraintRight_toLeftOf="@+id/removeButton2"
             android:layout_marginRight="8dp" />
 
         <Button
-            android:id="@+id/button4"
+            android:id="@+id/logButton3"
             android:layout_width="142dp"
             android:layout_height="55dp"
             android:layout_marginTop="0dp"
             android:text="Log 2nd rest period"
-            app:layout_constraintTop_toBottomOf="@+id/button2"
-            app:layout_constraintRight_toLeftOf="@+id/button9"
+            app:layout_constraintTop_toBottomOf="@+id/logButton2"
+            app:layout_constraintRight_toLeftOf="@+id/removeButton3"
             android:layout_marginRight="8dp" />
 
         <Button
-            android:id="@+id/button5"
+            android:id="@+id/logButton4"
             android:layout_width="142dp"
             android:layout_height="55dp"
             android:text="Log 2nd activity"
             android:layout_marginTop="0dp"
-            app:layout_constraintTop_toBottomOf="@+id/button4"
-            app:layout_constraintRight_toLeftOf="@+id/button11"
+            app:layout_constraintTop_toBottomOf="@+id/logButton3"
+            app:layout_constraintRight_toLeftOf="@+id/removeButton4"
             android:layout_marginRight="8dp" />
 
         <Button
-            android:id="@+id/button6"
+            android:id="@+id/logButton5"
             android:layout_width="142dp"
             android:layout_height="55dp"
             android:text="Log 3rd rest period"
             android:layout_marginTop="0dp"
-            app:layout_constraintTop_toBottomOf="@+id/button5"
-            app:layout_constraintRight_toLeftOf="@+id/button13"
+            app:layout_constraintTop_toBottomOf="@+id/logButton4"
+            app:layout_constraintRight_toLeftOf="@+id/removeButton5"
             android:layout_marginRight="8dp" />
 
         <Button
-            android:id="@+id/button3"
+            android:id="@+id/logButton1"
             android:layout_width="142dp"
             android:layout_height="55dp"
             android:layout_marginTop="0dp"
             android:text="Log 1st rest period"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintRight_toLeftOf="@+id/button8"
+            app:layout_constraintRight_toLeftOf="@+id/removeButton1"
             android:layout_marginRight="8dp" />
-
-        <CheckBox
-            android:id="@+id/checkBox"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="23dp"
-            app:layout_constraintTop_toBottomOf="@+id/checkBox6"
-            app:layout_constraintRight_toLeftOf="@+id/button6"
-            android:layout_marginRight="0dp" />
-
-        <CheckBox
-            android:id="@+id/checkBox6"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintRight_toLeftOf="@+id/button5"
-            android:layout_marginRight="-7dp"
-            android:layout_marginTop="23dp"
-            app:layout_constraintTop_toBottomOf="@+id/checkBox5" />
 
         <CheckBox
             android:id="@+id/checkBox5"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginRight="0dp"
             android:layout_marginTop="23dp"
-            app:layout_constraintTop_toBottomOf="@+id/checkBox4"
-            app:layout_constraintRight_toLeftOf="@+id/button4"
-            android:layout_marginRight="0dp" />
+            app:layout_constraintRight_toLeftOf="@+id/logButton5"
+            app:layout_constraintTop_toBottomOf="@+id/checkBox4" />
 
         <CheckBox
             android:id="@+id/checkBox4"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:layout_constraintRight_toLeftOf="@+id/button2"
-            android:layout_marginRight="0dp"
+            app:layout_constraintRight_toLeftOf="@+id/logButton4"
+            android:layout_marginRight="-7dp"
             android:layout_marginTop="23dp"
-            app:layout_constraintTop_toBottomOf="@+id/checkBox2" />
+            app:layout_constraintTop_toBottomOf="@+id/checkBox3" />
+
+        <CheckBox
+            android:id="@+id/checkBox3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="23dp"
+            app:layout_constraintTop_toBottomOf="@+id/checkBox2"
+            app:layout_constraintRight_toLeftOf="@+id/logButton3"
+            android:layout_marginRight="0dp" />
 
         <CheckBox
             android:id="@+id/checkBox2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:layout_constraintRight_toLeftOf="@+id/button3"
+            app:layout_constraintRight_toLeftOf="@+id/logButton2"
+            android:layout_marginRight="0dp"
+            android:layout_marginTop="23dp"
+            app:layout_constraintTop_toBottomOf="@+id/checkBox1" />
+
+        <CheckBox
+            android:id="@+id/checkBox1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintRight_toLeftOf="@+id/logButton1"
             android:layout_marginRight="0dp"
             app:layout_constraintTop_toTopOf="parent"
             android:layout_marginTop="0dp" />
 
         <Button
-            android:id="@+id/button7"
+            android:id="@+id/removeButton2"
             android:layout_width="wrap_content"
             android:layout_height="55dp"
             android:layout_marginTop="0dp"
             android:text="Remove"
-            app:layout_constraintTop_toBottomOf="@+id/button8"
+            app:layout_constraintTop_toBottomOf="@+id/removeButton1"
             android:layout_marginRight="24dp"
             app:layout_constraintRight_toRightOf="parent" />
 
         <Button
-            android:id="@+id/button9"
+            android:id="@+id/removeButton3"
             android:layout_width="wrap_content"
             android:layout_height="55dp"
             android:layout_marginTop="0dp"
             android:text="Remove"
-            app:layout_constraintTop_toBottomOf="@+id/button7"
+            app:layout_constraintTop_toBottomOf="@+id/removeButton2"
             android:layout_marginRight="24dp"
             app:layout_constraintRight_toRightOf="parent" />
 
         <Button
-            android:id="@+id/button8"
+            android:id="@+id/removeButton1"
             android:layout_width="wrap_content"
             android:layout_height="55dp"
             android:layout_marginTop="0dp"
@@ -167,7 +167,7 @@
             app:layout_constraintRight_toRightOf="parent" />
 
         <Button
-            android:id="@+id/button14"
+            android:id="@+id/downloadButton"
             android:layout_width="102dp"
             android:layout_height="40dp"
             android:layout_marginRight="24dp"
@@ -175,6 +175,6 @@
             android:backgroundTint="@android:color/holo_green_dark"
             android:text="Download"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/button13" />
+            app:layout_constraintTop_toBottomOf="@+id/removeButton5" />
     </android.support.constraint.ConstraintLayout>
 </LinearLayout>

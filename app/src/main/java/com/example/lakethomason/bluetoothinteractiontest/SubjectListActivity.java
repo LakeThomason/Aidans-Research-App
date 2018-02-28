@@ -1,28 +1,18 @@
 package com.example.lakethomason.bluetoothinteractiontest;
 
-import android.app.Activity;
-import android.app.Dialog;
 import android.app.DialogFragment;
-import android.app.Fragment;
-import android.app.FragmentManager;
-import android.app.FragmentTransaction;
-import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.TextView;
 
-import java.io.FileDescriptor;
-import java.io.PrintWriter;
-import java.util.List;
+import java.io.File;
+import java.util.ArrayList;
 
 public class SubjectListActivity extends AppCompatActivity
         implements AddSubjectDialogFragment.NoticeDialogListener, SubjectClickedDialogFragment.SubjectClickedDialogListener
@@ -33,7 +23,8 @@ public class SubjectListActivity extends AppCompatActivity
     private TestSubjectList mSubjectList;
     private EasyToast easyToast;
     private AddSubjectDialogFragment AddSubjectDF;
-    DialogFragment subjectClickedFragment;
+    private DialogFragment subjectClickedFragment;
+    private int currentSubject;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +35,7 @@ public class SubjectListActivity extends AppCompatActivity
 
         mSubjectList = new TestSubjectList();
         mSubjectListView = findViewById(R.id.subjectListView);
-        arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mSubjectList.nameList);
+        arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mSubjectList.mNameList);
         mSubjectListView.setAdapter(arrayAdapter);
         AddSubjectDF = new AddSubjectDialogFragment();
 
@@ -66,24 +57,24 @@ public class SubjectListActivity extends AppCompatActivity
     }
 
     public void listItemClicked(int index) {
-        subjectClickedFragment = SubjectClickedDialogFragment.newInstance(mSubjectList.getSubject(index), index);
+        currentSubject = index;
+        subjectClickedFragment = SubjectClickedDialogFragment.newInstance(mSubjectList.getSubject(index));
         subjectClickedFragment.show(getFragmentManager(), "SubjectClickedDialog");
     }
 
-
     /*
-     * The following code consists of Overrides to the AddSubjectDialogFragment contained interface
+     * AddSubjectDialogListener Inheritance
      */
 
     @Override
     public void onDialogPositiveClick(String age, String weight, String identifier) {
-        String id = identifier;
         if (age.equals("") || weight.equals("")) {
             easyToast.makeToast("Do not leave required fields blank");
             AddSubjectDF.dismiss();
             AddSubjectDF.show(getFragmentManager(), "SubjectInput");
             return;
         }
+        String id = identifier;
         if (id.equals("")) {
             id = null;
         }
@@ -98,14 +89,69 @@ public class SubjectListActivity extends AppCompatActivity
     }
 
     /*
-     * The following code consists of Overrides to the SubjectClickedDialogFragment contained interface
+     * SubjectClickedListener inheritance
      */
 
     @Override
-    public void onDialogRemoveSubjectClick(int pos) {
-        mSubjectList.removeSubject(pos);
+    public void onRemoveSubjectClick() {
+        mSubjectList.removeSubject(currentSubject);
         arrayAdapter.notifyDataSetChanged();
         subjectClickedFragment.dismiss();
+        easyToast.makeToast(mSubjectList.getSubject(currentSubject).getIdentifier() + " was removed");
+    }
+
+    @Override
+    public void onRemoveTestClick(int pos) {
+        TestSubject subject = mSubjectList.getSubject(currentSubject);
+        switch (pos) {
+            case 0:
+                subject.removeTest(0);
+                break;
+            case 1:
+                subject.removeTest(1);
+                subject.removeTest(2);
+                break;
+            case 2:
+                subject.removeTest(3);
+                break;
+            case 3:
+                subject.removeTest(4);
+                subject.removeTest(5);
+                break;
+            case 4:
+                subject.removeTest(6);
+                break;
+        }
+        easyToast.makeToast("Test " + pos + " was removed");
+    }
+
+    @Override
+    public void onLogClicked(int pos){
+
+    }
+
+    @Override
+    public void onDownloadClicked(){
+        subjectClickedFragment.dismiss();
+        File[] fileList = mSubjectList.getSubject(currentSubject).getTests();
+        Intent emailIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+        // set the type to 'email'
+        emailIntent .setType("text/plain");
+        // add email(s) here to whom you want to send email
+        String to[] = {"lakesainthomason@gmail.com"};
+        emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
+        // create array to store files
+        ArrayList<Uri> uris = new ArrayList<Uri>();
+        for (File file : fileList){
+            // convert file to uri
+            uris.add(Uri.fromFile(file));
+        }
+        // add the attachment
+        emailIntent .putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+        // add mail subject
+        emailIntent .putExtra(Intent.EXTRA_SUBJECT, "Saved files");
+        // create mail service chooser
+        this.startActivity(Intent.createChooser(emailIntent, "Save results"));
     }
 }
 

@@ -228,25 +228,4 @@ public class MainActivity extends AppCompatActivity {
             mPolarH7LogButton.setText("Log Polar");
         }
     }
-
-    private void sendCSVs() {
-        Intent emailIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
-        // set the type to 'email'
-        emailIntent .setType("text/plain");
-        // add email(s) here to whom you want to send email
-        String to[] = {"lakesainthomason@gmail.com"}; //TODO email input
-        emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
-        // create array to store files
-        ArrayList<Uri> uris = new ArrayList<Uri>();
-        // convert file to uri
-        uris.add(Uri.fromFile(polarH7Device.getFile()));
-        // convert file to uri
-        uris.add(Uri.fromFile(metawearConnectedState.getFile()));
-        // add the attachment
-        emailIntent .putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-        // add mail subject
-        emailIntent .putExtra(Intent.EXTRA_SUBJECT, "Saved files");
-        // create mail service chooser
-        MainActivity.this.startActivity(Intent.createChooser(emailIntent, "Save results"));
-    }
 }
