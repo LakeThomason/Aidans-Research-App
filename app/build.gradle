@@ -23,6 +23,7 @@ repositories {
         url "https://mbientlab.com/releases/ivyrep"
         layout "gradle"
         maven { url "https://maven.google.com" }
+        mavenCentral()
     }
 }
 dependencies {
@@ -35,5 +36,6 @@ dependencies {
     compile 'com.mbientlab:metawear:3.2.0'
     compile 'com.google.android.gms:play-services-drive:11.6.0'
     compile 'com.android.support:design:26.+'
+    compile 'com.google.code.gson:gson:2.8.2'
     testCompile 'junit:junit:4.12'
 }

@@ -9,12 +9,14 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.AsyncTask;
 import android.os.IBinder;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.TextView;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
@@ -32,46 +34,58 @@ import java.io.File;
 import bolts.Continuation;
 import bolts.Task;
 
+import com.google.gson.Gson;
+
+
 
 /**
  * Created by lakethomason on 1/11/2018.
  */
 
-public class MetawearConnected implements ServiceConnection {
+public class Metawear implements ServiceConnection, Parcelable {
     private Logging logging;
     private SensorFusionBosch sensorFusion;
     private MetaWearBoard board;
     private BtleService.LocalBinder serviceBinder;
 
-    private CheckBox mMetawearCheckBox;
-    private Button mLogButton;
-    private TextView mBattery;
     private TextView mSignal;
+    private CheckBox mMetawearCheckBox;
 
     private long startTime;
+    private Boolean canLog;
 
     private Activity activity;
     private EasyToast easyToast;
     private FileCreator fileCreator;
 
-    public MetawearConnected(Activity _activity, EasyToast _easyToast) {
-        activity = _activity;
-        easyToast = _easyToast;
-        mMetawearCheckBox =  activity.findViewById(R.id.metawearCheckBox);
-        mLogButton  = activity.findViewById(R.id.logMetaWearButton);
-        mSignal = activity.findViewById(R.id.heartRateText);
-        startTime = -1;
-        activity.getApplicationContext().bindService(new Intent(activity, BtleService.class), this, Context.BIND_AUTO_CREATE);
+    public Metawear(Activity _activity) {
+        canLog = false;
+        setContext(_activity);
     }
 
-    public void blinkLed(Led.Color color, int count) {
-        Led led;
-        if ((led = board.getModule(Led.class)) != null) {
-            led.editPattern(color, Led.PatternPreset.BLINK)
-                    .repeatCount((byte) count)
-                    .commit();
-            led.play();
+    protected Metawear(Parcel in) {
+//        Gson gson = new Gson();
+//        this.board = gson.fromJson(in.readString(), MetaWearBoard.class);
+    }
+
+    public static final Creator<Metawear> CREATOR = new Creator<Metawear>() {
+        @Override
+        public Metawear createFromParcel(Parcel in) {
+            return new Metawear(in);
         }
+
+        @Override
+        public Metawear[] newArray(int size) {
+            return new Metawear[size];
+        }
+    };
+
+    public void setContext(Activity _activity) {
+        activity = _activity;
+        easyToast = new EasyToast(activity);
+        mSignal = activity.findViewById(R.id.heartRateText);
+        mMetawearCheckBox =  activity.findViewById(R.id.metawearCheckBox);
+        activity.getApplicationContext().bindService(new Intent(activity, BtleService.class), this, Context.BIND_AUTO_CREATE);
     }
 
     public void connectToMetawearDevice(final String macAddress, final String deviceName) {
@@ -88,15 +102,14 @@ public class MetawearConnected implements ServiceConnection {
                 if (task.isFaulted()) {
                     easyToast.makeToastOnUIThread("Failed to connect to " + deviceName);
                 } else {
-                    //state = State.MetaConnected; TODO: incorporate state
                     activity.runOnUiThread(new Runnable() {
                         public void run() {
                             mMetawearCheckBox.setChecked(true);
-                            mLogButton.setVisibility(View.VISIBLE);
                             easyToast.makeToast("Connected to " + deviceName);
                         }
                     });
                     blinkLed(Led.Color.GREEN, 10);
+                    canLog = true;
                     logging = board.getModule(Logging.class);
                     sensorFusion = board.getModule(SensorFusionBosch.class);
                     new updateRSSI().execute();
@@ -104,30 +117,26 @@ public class MetawearConnected implements ServiceConnection {
                         Log.d("Metawear", "A module was null");
                     }
                 }
+                setOnDisconnectListener();
                 return null;
-            }
-        });
-
-        //set an unexpected disconnect listener
-        board.onUnexpectedDisconnect(new MetaWearBoard.UnexpectedDisconnectHandler() {
-            @Override
-            public void disconnected(int status) {
-                Log.d("MainActivity", "Unexpectedly lost connection: " + status);
-                activity.runOnUiThread(new Runnable() {
-                    public void run() {
-                        mMetawearCheckBox.setChecked(false);
-                        mSignal.setText("Signal: ");
-                        easyToast.makeToast("Lost connection to the MetaWear Device");
-                    }
-                });
             }
         });
     }
 
     public void beginLogging() {
+        if (board != null &&!board.isConnected()) {
+            easyToast.makeToast("The MetaWear board seems to be disconnected");
+            return;
+        }
+        else if (!canLog) {
+            easyToast.makeToast("You cannot log while another process is logging or downloading");
+            return;
+        }
+        startTime = -1;
+        canLog = false;
         logging.clearEntries();
         blinkLed(Led.Color.BLUE, 10);
-        mLogButton.setText("Stop");
+        easyToast.makeToast("Logging has started");
         fileCreator = new FileCreator("Lake", "Metawear");//TODO: introduce subject names
         fileCreator.appendLineToCSV("Elapsed Time(s),x-axis(deg),y-axis(deg),z-axis(deg)");
 
@@ -156,12 +165,9 @@ public class MetawearConnected implements ServiceConnection {
     }
 
     public void stopLogging(final Runnable sendCSV) {
-        //logging.stop();
         sensorFusion.stop();
         sensorFusion.eulerAngles().stop();
         blinkLed(Led.Color.BLUE, 5);
-        mLogButton.setText("Log");
-        // state = MainActivity.State.ReadyToLog; TODO:state
         easyToast.makeToast("Starting Download");
 
         // download log data and send 100 progress updates during the download
@@ -175,11 +181,32 @@ public class MetawearConnected implements ServiceConnection {
             public Task<Void> then(Task<Void> task) throws Exception {
                 Log.i("MainActivity", "Download completed");
                 easyToast.makeToastOnUIThread("Download Complete");
+                canLog = true;
                 blinkLed(Led.Color.GREEN, 10);
                 logging.clearEntries();
                 fileCreator.closeFile();
-                //sendCSV.run();
                 return null;
+            }
+        });
+    }
+
+    private void setOnDisconnectListener() {
+        if (board == null) {
+            return;
+        }
+        //set an unexpected disconnect listener
+        board.onUnexpectedDisconnect(new MetaWearBoard.UnexpectedDisconnectHandler() {
+            @Override
+            public void disconnected(int status) {
+                Log.d("MainActivity", "Unexpectedly lost connection: " + status);
+                canLog = false;
+                activity.runOnUiThread(new Runnable() {
+                    public void run() {
+                        mMetawearCheckBox.setChecked(false);
+                        mSignal.setText("Signal: ");
+                        easyToast.makeToast("Lost connection to the MetaWear Device");
+                    }
+                });
             }
         });
     }
@@ -231,6 +258,16 @@ public class MetawearConnected implements ServiceConnection {
                 );
     }
 
+    public void blinkLed(Led.Color color, int count) {
+        Led led;
+        if ((led = board.getModule(Led.class)) != null) {
+            led.editPattern(color, Led.PatternPreset.BLINK)
+                    .repeatCount((byte) count)
+                    .commit();
+            led.play();
+        }
+    }
+
     public File getFile() {
         return fileCreator.getFile();
     }
@@ -252,4 +289,15 @@ public class MetawearConnected implements ServiceConnection {
 
     @Override
     public void onServiceDisconnected(ComponentName componentName) { }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+//        Gson gson = new Gson();
+//        dest.writeString(gson.toJson(board, MetaWearBoard.class));
+    }
 }

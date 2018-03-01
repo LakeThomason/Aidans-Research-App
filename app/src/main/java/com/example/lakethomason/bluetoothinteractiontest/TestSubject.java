@@ -97,7 +97,9 @@ public class TestSubject implements Parcelable {
 
     public void removeAllTests() {
         for (File file : mFileList) {
-            file.delete();
+            if (file != null) {
+                file.delete();
+            }
         }
         mFileList = new File[7];
     }

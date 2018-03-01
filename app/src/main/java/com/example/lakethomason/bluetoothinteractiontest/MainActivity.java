@@ -3,13 +3,10 @@ package com.example.lakethomason.bluetoothinteractiontest;
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothHealth;
-import android.bluetooth.BluetoothProfile;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.net.Uri;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -17,13 +14,11 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.ListView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -39,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private List<String> deviceList;
     private ArrayAdapter<String> arrayAdapter;
 
-    private MetawearConnected metawearConnectedState;
+    private Metawear metawearDevice;
     private PolarH7 polarH7Device;
     private EasyToast easyToast;
 
@@ -56,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
         easyToast = new EasyToast(MainActivity.this);
-        metawearConnectedState = new MetawearConnected(MainActivity.this, easyToast);
+        metawearDevice = new Metawear(MainActivity.this);
         polarH7Device = new PolarH7(MainActivity.this, easyToast, mBluetoothAdapter);
 
         mBluetoothAdapter.getBluetoothLeScanner().startScan(polarH7Device.scanCallback);
@@ -65,7 +60,9 @@ public class MainActivity extends AppCompatActivity {
         mSubjectsListButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, SubjectListActivity.class));
+                Intent intent = new Intent(MainActivity.this, SubjectListActivity.class);
+                intent.putExtra("MetawearBoard", metawearDevice);
+                startActivity(intent);
             }
         });
         mBluetoothList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -121,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         // unregister the ACTION_FOUND receiver.
         unregisterReceiver(mReceiver);
-        metawearConnectedState.destroyService();
+        metawearDevice.destroyService();
     }
 
     /***********************************************************************************************
@@ -169,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
             deviceAddress = macAddressList.get(position);
 
             easyToast.makeToast("Trying to connect with " + deviceName);
-            metawearConnectedState.connectToMetawearDevice(deviceAddress, deviceName);
+            metawearDevice.connectToMetawearDevice(deviceAddress, deviceName);
         }
         //TODO check what kind of device is being clicked
         //TODO check if the device is already connected
@@ -193,7 +190,7 @@ public class MainActivity extends AppCompatActivity {
                     arrayAdapter.notifyDataSetChanged();
                     if (deviceName.equals("MetaWear")) {
                         easyToast.makeToast("Trying to connect with " + deviceName);
-                        metawearConnectedState.connectToMetawearDevice(deviceHardwareAddress, deviceName);
+                        metawearDevice.connectToMetawearDevice(deviceHardwareAddress, deviceName);
                     }
                 }
             }
@@ -203,11 +200,11 @@ public class MainActivity extends AppCompatActivity {
     public void metaWearLogButtonClicked() {
         //if (state == State.Logging)
         if (mMetaWearLogButton.getText().toString().equals("Log Meta")) {
-            metawearConnectedState.beginLogging();
+            metawearDevice.beginLogging();
             mMetaWearLogButton.setText("Stop");
         }
         else {
-            metawearConnectedState.stopLogging(new Runnable() {
+            metawearDevice.stopLogging(new Runnable() {
                 public void run() {
                     //sendCSVs();
                 }

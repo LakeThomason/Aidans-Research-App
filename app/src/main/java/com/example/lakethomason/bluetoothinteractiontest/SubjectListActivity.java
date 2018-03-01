@@ -11,6 +11,8 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
+import com.mbientlab.metawear.MetaWearBoard;
+
 import java.io.File;
 import java.util.ArrayList;
 
@@ -24,6 +26,7 @@ public class SubjectListActivity extends AppCompatActivity
     private EasyToast easyToast;
     private AddSubjectDialogFragment AddSubjectDF;
     private DialogFragment subjectClickedFragment;
+    private Metawear metawearDevice;
     private int currentSubject;
 
     @Override
@@ -32,7 +35,7 @@ public class SubjectListActivity extends AppCompatActivity
         setContentView(R.layout.activity_subject_list);
 
         easyToast = new EasyToast(SubjectListActivity.this);
-
+        metawearDevice = getIntent().getParcelableExtra("MetawearBoard");
         mSubjectList = new TestSubjectList();
         mSubjectListView = findViewById(R.id.subjectListView);
         arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mSubjectList.mNameList);
@@ -94,10 +97,10 @@ public class SubjectListActivity extends AppCompatActivity
 
     @Override
     public void onRemoveSubjectClick() {
+        easyToast.makeToast(mSubjectList.getSubject(currentSubject).getIdentifier() + " was removed");
         mSubjectList.removeSubject(currentSubject);
         arrayAdapter.notifyDataSetChanged();
         subjectClickedFragment.dismiss();
-        easyToast.makeToast(mSubjectList.getSubject(currentSubject).getIdentifier() + " was removed");
     }
 
     @Override
@@ -127,7 +130,7 @@ public class SubjectListActivity extends AppCompatActivity
 
     @Override
     public void onLogClicked(int pos){
-
+        //metawearDevice.beginLogging();
     }
 
     @Override

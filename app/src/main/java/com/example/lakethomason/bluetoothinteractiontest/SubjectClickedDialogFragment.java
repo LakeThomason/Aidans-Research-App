@@ -51,7 +51,6 @@ public class SubjectClickedDialogFragment extends DialogFragment implements View
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mTestSubject = getArguments().getParcelable("TestSubject");
-
     }
 
     // Override the Fragment.onAttach() method to instantiate the NoticeDialogListener

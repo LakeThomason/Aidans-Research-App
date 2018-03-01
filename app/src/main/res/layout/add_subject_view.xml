@@ -21,7 +21,7 @@
             android:textStyle="bold"
             android:layout_marginRight="150dp"
             app:layout_constraintRight_toRightOf="@+id/identifierEditText"
-            app:layout_constraintTop_toTopOf="@+id/textView7"
+            app:layout_constraintTop_toTopOf="@+id/heartRateText"
             android:layout_marginTop="87dp" />
 
         <TextView
@@ -32,13 +32,13 @@
             android:textAlignment="textEnd"
             android:textAppearance="@android:style/TextAppearance.Material.Medium"
             android:textStyle="bold"
-            app:layout_constraintTop_toTopOf="@+id/textView7"
+            app:layout_constraintTop_toTopOf="@+id/heartRateText"
             android:layout_marginTop="44dp"
             android:layout_marginRight="60dp"
             app:layout_constraintRight_toRightOf="@+id/weightEditText" />
 
         <TextView
-            android:id="@+id/textView7"
+            android:id="@+id/heartRateText"
             android:layout_width="75dp"
             android:layout_height="33dp"
             android:text="*Age :"
