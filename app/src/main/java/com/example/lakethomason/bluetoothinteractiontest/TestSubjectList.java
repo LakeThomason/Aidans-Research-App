@@ -12,18 +12,15 @@ public class TestSubjectList {
     public ArrayList<String> mNameList;
     private ArrayList<TestSubject> mTestSubjects;
 
-    TestSubjectList() {
-        mTestSubjects = new ArrayList<TestSubject>();
-        mNameList = new ArrayList<String>();
-        generateTestSubjects(50);
+    private static final TestSubjectList instance = new TestSubjectList();
+
+    public static TestSubjectList getInstance() {
+        return instance;
     }
 
-    private void generateTestSubjects(int numSubjects) {
-        for (int i = 0; i < numSubjects; i++){
-            TestSubject testSubject = new TestSubject();
-            mTestSubjects.add(testSubject);
-            mNameList.add(testSubject.getIdentifier());
-        }
+    private TestSubjectList() {
+        mTestSubjects = new ArrayList<TestSubject>();
+        mNameList = new ArrayList<String>();
     }
 
     public TestSubject getSubject(int pos) {
@@ -47,7 +44,7 @@ public class TestSubjectList {
         mNameList.remove(pos);
     }
 
-    public void addTestToSubject(int pos, File file, int testNum) {
-        mTestSubjects.get(pos).addTest(file, testNum);
+    public void addTestToSubject(int index, File file, int testNum) {
+        mTestSubjects.get(index).addTest(file, testNum);
     }
 }

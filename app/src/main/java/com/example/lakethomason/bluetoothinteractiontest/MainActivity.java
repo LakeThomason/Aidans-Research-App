@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.IBinder;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -23,8 +24,6 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private ListView mBluetoothList;
-    private Button mMetaWearLogButton;
-    private Button mPolarH7LogButton;
     private TextView mRefreshButton;
     private Button mSubjectsListButton;
     private BluetoothAdapter mBluetoothAdapter;
@@ -51,8 +50,12 @@ public class MainActivity extends AppCompatActivity {
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
         easyToast = new EasyToast(MainActivity.this);
-        metawearDevice = new Metawear(MainActivity.this);
-        polarH7Device = new PolarH7(MainActivity.this, easyToast, mBluetoothAdapter);
+
+        metawearDevice = Metawear.getInstance();
+        metawearDevice.setActivity(this);
+
+        polarH7Device = PolarH7.getInstance();
+        polarH7Device.setActivity(this);
 
         mBluetoothAdapter.getBluetoothLeScanner().startScan(polarH7Device.scanCallback);
 
@@ -61,7 +64,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(MainActivity.this, SubjectListActivity.class);
-                intent.putExtra("MetawearBoard", metawearDevice);
                 startActivity(intent);
             }
         });
@@ -77,18 +79,6 @@ public class MainActivity extends AppCompatActivity {
                 beginDiscovery();
                 mBluetoothAdapter.getBluetoothLeScanner().startScan(polarH7Device.scanCallback);
                 easyToast.makeToast("Refreshing bluetooth list..");
-            }
-        });
-        mMetaWearLogButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                metaWearLogButtonClicked();
-            }
-        });
-        mPolarH7LogButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                polarH7LogButtonClicked();
             }
         });
 
@@ -118,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         // unregister the ACTION_FOUND receiver.
         unregisterReceiver(mReceiver);
-        metawearDevice.destroyService();
+        //metawearDevice.destroyService();
     }
 
     /***********************************************************************************************
@@ -126,8 +116,6 @@ public class MainActivity extends AppCompatActivity {
      **********************************************************************************************/
     public void prepareDataMembers() {
         mRefreshButton = (TextView) findViewById(R.id.refreshText);
-        mMetaWearLogButton  = (Button) findViewById(R.id.logMetaWearButton);
-        mPolarH7LogButton  = (Button) findViewById(R.id.logPolarButton);
         mSubjectsListButton = findViewById(R.id.testSubjectsButton);
         deviceList = new ArrayList<String>();
         macAddressList = new ArrayList<String>();
@@ -168,10 +156,7 @@ public class MainActivity extends AppCompatActivity {
             easyToast.makeToast("Trying to connect with " + deviceName);
             metawearDevice.connectToMetawearDevice(deviceAddress, deviceName);
         }
-        //TODO check what kind of device is being clicked
-        //TODO check if the device is already connected
     }
-
 
     // Create a BroadcastReceiver for ACTION_FOUND.
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
@@ -196,33 +181,4 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
-
-    public void metaWearLogButtonClicked() {
-        //if (state == State.Logging)
-        if (mMetaWearLogButton.getText().toString().equals("Log Meta")) {
-            metawearDevice.beginLogging();
-            mMetaWearLogButton.setText("Stop");
-        }
-        else {
-            metawearDevice.stopLogging(new Runnable() {
-                public void run() {
-                    //sendCSVs();
-                }
-            });
-            mMetaWearLogButton.setText("Log Meta");
-        }
-    }
-
-    public void polarH7LogButtonClicked() {
-        //if (state == State.Logging)
-        if (mPolarH7LogButton.getText().toString().equals("Log Polar")) {
-
-            polarH7Device.beginLogging();
-            mPolarH7LogButton.setText("Stop");
-        }
-        else {
-            polarH7Device.stopLogging();
-            mPolarH7LogButton.setText("Log Polar");
-        }
-    }
 }

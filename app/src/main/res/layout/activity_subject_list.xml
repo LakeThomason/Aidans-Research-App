@@ -54,7 +54,7 @@
             app:layout_constraintLeft_toLeftOf="parent" />
 
         <TextView
-            android:id="@+id/textView8"
+            android:id="@+id/signalMetawear"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Signal: "
@@ -76,7 +76,7 @@
             android:layout_marginBottom="16dp" />
 
         <CheckBox
-            android:id="@+id/checkBox6"
+            android:id="@+id/metawearCheckBox"
             android:layout_width="100dp"
             android:layout_height="29dp"
             android:text="Metawear Connected"
@@ -106,7 +106,10 @@
             app:layout_constraintBottom_toBottomOf="parent"
             android:layout_marginBottom="2dp"
             android:layout_marginLeft="69dp"
-            app:layout_constraintLeft_toLeftOf="@+id/textView9" />
+            app:layout_constraintLeft_toLeftOf="@+id/textView9"
+            android:layout_marginTop="8dp"
+            app:layout_constraintTop_toBottomOf="@+id/stopButton"
+            app:layout_constraintVertical_bias="1.0" />
 
         <TextView
             android:id="@+id/timeRemainingText"

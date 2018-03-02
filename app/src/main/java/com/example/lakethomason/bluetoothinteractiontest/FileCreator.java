@@ -23,9 +23,9 @@ public class FileCreator {
 
 
     //directoryName is name of test subject
-    public FileCreator(String subjectName, String deviceName) {
+    public FileCreator(String subjectName, String deviceName, int testNumber) {
         dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                , "MetawearFiles/" + subjectName);
+                , "Aidans Research App/" + subjectName + "/Test" + (testNumber + 1));
         if (!dir.exists()) {
             if (!dir.mkdirs()) {
                 Log.d("MainActivity", "Directory creation has failed");
@@ -33,7 +33,7 @@ public class FileCreator {
         }
         //prepare the datafile to write to
         try {
-            file = new File(dir, subjectName + ": " + deviceName + "_" +
+            file = new File(dir, deviceName + "_" +
                     DateFormat.getDateTimeInstance().format(new Date()) +
                     "_.csv");
             file.createNewFile();
@@ -66,6 +66,12 @@ public class FileCreator {
             Log.d("IOException", "File write failed: ");
             e.printStackTrace();
             return false;
+        }
+    }
+
+    public void deleteFile() {
+        if (file.exists()){
+            file.delete();
         }
     }
 

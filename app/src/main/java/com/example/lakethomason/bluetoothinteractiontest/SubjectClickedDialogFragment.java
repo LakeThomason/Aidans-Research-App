@@ -17,6 +17,12 @@ public class SubjectClickedDialogFragment extends DialogFragment implements View
     private TestSubject mTestSubject;
     SubjectClickedDialogListener mListener;
 
+    CheckBox checkBox1;
+    CheckBox checkBox2;
+    CheckBox checkBox3;
+    CheckBox checkBox4;
+    CheckBox checkBox5;
+
     public interface SubjectClickedDialogListener {
         void onRemoveSubjectClick();
         void onRemoveTestClick(int pos);
@@ -35,15 +41,15 @@ public class SubjectClickedDialogFragment extends DialogFragment implements View
 
     public void setCheckBoxes(View dialog) {
         ArrayList<Boolean> checkList = mTestSubject.getTestsAvailability();
-        final CheckBox checkBox1 = dialog.findViewById(R.id.checkBox1);
+        checkBox1 = dialog.findViewById(R.id.checkBox1);
         checkBox1.setChecked(checkList.get(0));
-        final CheckBox checkBox2 = dialog.findViewById(R.id.checkBox2);
+        checkBox2 = dialog.findViewById(R.id.checkBox2);
         checkBox2.setChecked(checkList.get(1) && checkList.get(2));
-        final CheckBox checkBox3 = dialog.findViewById(R.id.checkBox3);
+        checkBox3 = dialog.findViewById(R.id.checkBox3);
         checkBox3.setChecked(checkList.get(3));
-        final CheckBox checkBox4 = dialog.findViewById(R.id.checkBox4);
+        checkBox4 = dialog.findViewById(R.id.checkBox4);
         checkBox4.setChecked(checkList.get(4) && checkList.get(5));
-        final CheckBox checkBox5 = dialog.findViewById(R.id.checkBox5);
+        checkBox5 = dialog.findViewById(R.id.checkBox5);
         checkBox5.setChecked(checkList.get(6));
     }
 
@@ -122,34 +128,39 @@ public class SubjectClickedDialogFragment extends DialogFragment implements View
                 mListener.onRemoveSubjectClick();
                 break;
             case R.id.removeButton1:
-                mListener.onRemoveTestClick(1);
+                checkBox1.setChecked(false);
+                mListener.onRemoveTestClick(0);
                 break;
             case R.id.removeButton2:
-                mListener.onRemoveTestClick(2);
+                checkBox2.setChecked(false);
+                mListener.onRemoveTestClick(1);
                 break;
             case R.id.removeButton3:
-                mListener.onRemoveTestClick(3);
+                checkBox3.setChecked(false);
+                mListener.onRemoveTestClick(2);
                 break;
             case R.id.removeButton4:
-                mListener.onRemoveTestClick(4);
+                checkBox4.setChecked(false);
+                mListener.onRemoveTestClick(3);
                 break;
             case R.id.removeButton5:
-                mListener.onRemoveTestClick(5);
+                checkBox5.setChecked(false);
+                mListener.onRemoveTestClick(4);
                 break;
             case R.id.logButton1:
-                mListener.onLogClicked(1);
+                mListener.onLogClicked(0);
                 break;
             case R.id.logButton2:
-                mListener.onLogClicked(2);
+                mListener.onLogClicked(1);
                 break;
             case R.id.logButton3:
-                mListener.onLogClicked(3);
+                mListener.onLogClicked(2);
                 break;
             case R.id.logButton4:
-                mListener.onLogClicked(4);
+                mListener.onLogClicked(3);
                 break;
             case R.id.logButton5:
-                mListener.onLogClicked(5);
+                mListener.onLogClicked(4);
                 break;
             case R.id.downloadButton:
                 mListener.onDownloadClicked();

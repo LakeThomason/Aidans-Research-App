@@ -80,7 +80,6 @@ public class PolarH7 {
     private TextView mSignal;
 
     private BluetoothAdapter bluetoothAdapter;
-    private Context context;
     private FileCreator fileCreator;
     private boolean log;
     private long startTime;
@@ -92,31 +91,42 @@ public class PolarH7 {
     private final UUID HR_SERVICE = UUID.fromString("0000180D-0000-1000-8000-00805f9b34fb");
     private static final UUID DESCRIPTOR_CCC = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
+    private static final PolarH7 instance = new PolarH7();
 
-    public PolarH7(Activity _activity, EasyToast _easyToast, BluetoothAdapter adapter) {
-        activity = _activity;
-        easyToast = _easyToast;
-        bluetoothAdapter = adapter;
+    public static PolarH7 getInstance() {
+        return instance;
+    }
+
+    private PolarH7() {
         log = false;
+    }
 
-        context = activity.getApplicationContext();
+    public void setActivity(Activity _activity) {
+        activity = _activity;
+        easyToast = new EasyToast(activity);
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        mBattery = activity.findViewById(R.id.batteryPolar);
-        mSignal = activity.findViewById(R.id.signalPolar);
         mPolarH7CheckBox = activity.findViewById(R.id.polarh7CheckBox);
         mHeartRateText = activity.findViewById(R.id.heartRateText);
     }
 
-    public void beginLogging() {
-        fileCreator = new FileCreator("Lake", "Polar H7");
+    public void beginLogging(String subjectName, int testNumber) {
+        fileCreator = new FileCreator(subjectName, "PolarH7", testNumber);
         fileCreator.appendLineToCSV("Elapsed Time(s),Heart Rate(bpm),RR Value(ms)");
         log = true;
         startTime = -1;
     }
 
-    public void stopLogging() {
+    public void stopLogging(Runnable addFileToSubject) {
         log = false;
         fileCreator.closeFile();
+        addFileToSubject.run();
+    }
+
+    public void stopLoggingAndDestroy() {
+        log = false;
+        fileCreator.closeFile();
+        fileCreator.deleteFile();
     }
 
     public File getFile() {
@@ -164,7 +174,7 @@ public class PolarH7 {
             String name = new String(content.get(AD_TYPE.GAP_ADTYPE_LOCAL_NAME_COMPLETE));
             if (name.startsWith("Polar ")) {
                 bluetoothAdapter.getBluetoothLeScanner().stopScan(scanCallback);
-                device.connectGatt(context,false,bluetoothGattCallback, BluetoothDevice.TRANSPORT_LE);
+                device.connectGatt(activity.getApplicationContext(),false,bluetoothGattCallback, BluetoothDevice.TRANSPORT_LE);
             }
         }
     }
@@ -259,22 +269,6 @@ public class PolarH7 {
                         }
                     }
                 }
-            }
-        }
-
-        @Override
-        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-            super.onCharacteristicRead(gatt, characteristic, status);
-            if (characteristic.getUuid().equals(BATTERY_PERCENT)) {
-                int format = BluetoothGattCharacteristic.FORMAT_UINT8;
-                final int batteryLevel = characteristic.getIntValue(format, 0);
-                Log.i("MainActivity", "Battery Level polar: " + batteryLevel);
-                activity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        mBattery.setText("Battery: " + batteryLevel);
-                    }
-                });
             }
         }
 

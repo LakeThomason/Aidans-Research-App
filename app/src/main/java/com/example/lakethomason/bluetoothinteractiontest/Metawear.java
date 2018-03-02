@@ -1,6 +1,7 @@
 package com.example.lakethomason.bluetoothinteractiontest;
 
 import android.app.Activity;
+import android.app.Application;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.ComponentName;
@@ -13,6 +14,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
 import android.widget.CheckBox;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.google.gson.JsonElement;
@@ -42,7 +44,7 @@ import com.google.gson.Gson;
  * Created by lakethomason on 1/11/2018.
  */
 
-public class Metawear implements ServiceConnection, Parcelable {
+public class Metawear implements ServiceConnection {
     private Logging logging;
     private SensorFusionBosch sensorFusion;
     private MetaWearBoard board;
@@ -50,6 +52,7 @@ public class Metawear implements ServiceConnection, Parcelable {
 
     private TextView mSignal;
     private CheckBox mMetawearCheckBox;
+    private ProgressBar mDownloadBar;
 
     private long startTime;
     private Boolean canLog;
@@ -58,34 +61,28 @@ public class Metawear implements ServiceConnection, Parcelable {
     private EasyToast easyToast;
     private FileCreator fileCreator;
 
-    public Metawear(Activity _activity) {
+    private static final Metawear instance = new Metawear();
+
+    public static Metawear getInstance() {
+        return instance;
+    }
+
+    private Metawear() {
         canLog = false;
-        setContext(_activity);
     }
 
-    protected Metawear(Parcel in) {
-//        Gson gson = new Gson();
-//        this.board = gson.fromJson(in.readString(), MetaWearBoard.class);
-    }
-
-    public static final Creator<Metawear> CREATOR = new Creator<Metawear>() {
-        @Override
-        public Metawear createFromParcel(Parcel in) {
-            return new Metawear(in);
-        }
-
-        @Override
-        public Metawear[] newArray(int size) {
-            return new Metawear[size];
-        }
-    };
-
-    public void setContext(Activity _activity) {
+    public void setActivity(Activity _activity) {
         activity = _activity;
         easyToast = new EasyToast(activity);
-        mSignal = activity.findViewById(R.id.heartRateText);
+
+        mSignal = activity.findViewById(R.id.signalMetawear);
         mMetawearCheckBox =  activity.findViewById(R.id.metawearCheckBox);
+        mDownloadBar = activity.findViewById(R.id.downloadBar);
+
         activity.getApplicationContext().bindService(new Intent(activity, BtleService.class), this, Context.BIND_AUTO_CREATE);
+        if (board != null && board.isConnected()){
+            mMetawearCheckBox.setChecked(true);
+        }
     }
 
     public void connectToMetawearDevice(final String macAddress, final String deviceName) {
@@ -123,21 +120,21 @@ public class Metawear implements ServiceConnection, Parcelable {
         });
     }
 
-    public void beginLogging() {
-        if (board != null &&!board.isConnected()) {
+    public boolean beginLogging(String subjectName, int testNumber) {
+        if (board == null || !board.isConnected()) {
             easyToast.makeToast("The MetaWear board seems to be disconnected");
-            return;
+            return false;
         }
         else if (!canLog) {
             easyToast.makeToast("You cannot log while another process is logging or downloading");
-            return;
+            return false;
         }
+        mDownloadBar.setProgress(0);
         startTime = -1;
         canLog = false;
         logging.clearEntries();
         blinkLed(Led.Color.BLUE, 10);
-        easyToast.makeToast("Logging has started");
-        fileCreator = new FileCreator("Lake", "Metawear");//TODO: introduce subject names
+        fileCreator = new FileCreator(subjectName, "Metawear", testNumber);
         fileCreator.appendLineToCSV("Elapsed Time(s),x-axis(deg),y-axis(deg),z-axis(deg)");
 
         //setup the sensor
@@ -162,9 +159,14 @@ public class Metawear implements ServiceConnection, Parcelable {
                 return null;
             }
         });
+        return true;
     }
 
-    public void stopLogging(final Runnable sendCSV) {
+    public boolean stopLogging(final Runnable addFileToSubject) {
+        if (board == null || !board.isConnected()) {
+            easyToast.makeToast("The Metawear board has become disconnected");
+            return false;
+        }
         sensorFusion.stop();
         sensorFusion.eulerAngles().stop();
         blinkLed(Led.Color.BLUE, 5);
@@ -174,7 +176,9 @@ public class Metawear implements ServiceConnection, Parcelable {
         logging.downloadAsync(100, new Logging.LogDownloadUpdateHandler() {
             @Override
             public void receivedUpdate(long nEntriesLeft, long totalEntries) {
+                mDownloadBar.setMax(Integer.valueOf(String.valueOf(totalEntries)));
                 Log.i("MainActivity", "Progress Update = " + nEntriesLeft + "/" + totalEntries);
+                mDownloadBar.setProgress(Integer.valueOf(String.valueOf(totalEntries- nEntriesLeft)));
             }
         }).continueWithTask(new Continuation<Void, Task<Void>>() {
             @Override
@@ -185,9 +189,27 @@ public class Metawear implements ServiceConnection, Parcelable {
                 blinkLed(Led.Color.GREEN, 10);
                 logging.clearEntries();
                 fileCreator.closeFile();
+                addFileToSubject.run();
+                mDownloadBar.setProgress(0);
                 return null;
             }
         });
+        return true;
+    }
+
+    public boolean stopLoggingAndDestroy() {
+        if (!board.isConnected()) {
+            easyToast.makeToast("The Metawear board has become disconnected");
+            return false;
+        }
+        sensorFusion.stop();
+        sensorFusion.eulerAngles().stop();
+        blinkLed(Led.Color.RED, 3);
+        logging.clearEntries();
+        fileCreator.closeFile();
+        fileCreator.deleteFile();
+        canLog = true;
+        return true;
     }
 
     private void setOnDisconnectListener() {
@@ -268,6 +290,10 @@ public class Metawear implements ServiceConnection, Parcelable {
         }
     }
 
+    public MetaWearBoard getBoard() {
+        return board;
+    }
+
     public File getFile() {
         return fileCreator.getFile();
     }
@@ -289,15 +315,4 @@ public class Metawear implements ServiceConnection, Parcelable {
 
     @Override
     public void onServiceDisconnected(ComponentName componentName) { }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-//        Gson gson = new Gson();
-//        dest.writeString(gson.toJson(board, MetaWearBoard.class));
-    }
 }
