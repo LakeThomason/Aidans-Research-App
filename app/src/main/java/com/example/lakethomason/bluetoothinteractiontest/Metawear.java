@@ -198,7 +198,7 @@ public class Metawear implements ServiceConnection {
     }
 
     public boolean stopLoggingAndDestroy() {
-        if (!board.isConnected()) {
+        if (board == null || !board.isConnected()) {
             easyToast.makeToast("The Metawear board has become disconnected");
             return false;
         }

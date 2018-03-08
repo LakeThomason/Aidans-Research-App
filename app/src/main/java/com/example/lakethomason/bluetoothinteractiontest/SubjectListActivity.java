@@ -4,19 +4,23 @@ import android.app.DialogFragment;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
+import android.text.format.Time;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import com.mbientlab.metawear.MetaWearBoard;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 public class SubjectListActivity extends AppCompatActivity
         implements AddSubjectDialogFragment.NoticeDialogListener
@@ -34,6 +38,8 @@ public class SubjectListActivity extends AppCompatActivity
     private Metawear metawearDevice;
     private PolarH7 polarH7;
     private Button mStopButton;
+    private TextView mTimeRemainingText;
+    private CountDownTimer timer;
     private int currentSubject;
     private int testBeingLogged;
 
@@ -54,6 +60,7 @@ public class SubjectListActivity extends AppCompatActivity
         mSubjectListView = findViewById(R.id.subjectListView);
         mStopButton = findViewById(R.id.stopButton);
         mStopButton.setVisibility(View.INVISIBLE);
+        mTimeRemainingText = findViewById(R.id.timeRemainingText);
 
         arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mSubjectList.mNameList);
         mSubjectListView.setAdapter(arrayAdapter);
@@ -82,10 +89,51 @@ public class SubjectListActivity extends AppCompatActivity
         });
     }
 
-    public void listItemClicked(int index) {
+    private void listItemClicked(int index) {
         currentSubject = index;
         subjectClickedFragment = SubjectClickedDialogFragment.newInstance(mSubjectList.getSubject(index));
         subjectClickedFragment.show(getFragmentManager(), "SubjectClickedDialog");
+    }
+
+    private void startTimer(int time) {
+        timer = new CountDownTimer(time, 1000) {
+
+            public void onTick(long millisUntilFinished) {
+                mTimeRemainingText.setText( "Time: "
+                        + String.format("%d: %02d",
+                        TimeUnit.MILLISECONDS.toMinutes(millisUntilFinished),
+                        TimeUnit.MILLISECONDS.toSeconds(millisUntilFinished) -
+                                TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(millisUntilFinished))
+                ));
+            }
+
+            public void onFinish() {
+                keepTest();
+            }
+        }.start();
+    }
+
+    private void stopTimer(){
+        timer.cancel();
+        mTimeRemainingText.setText("Time: 0:00");
+    }
+
+    private void keepTest() {
+        if (testBeingLogged == 1 || testBeingLogged == 3) {
+            metawearDevice.stopLogging(new Runnable() {
+                @Override
+                public void run() {
+                    mSubjectList.addTestToSubject(currentSubject, metawearDevice.getFile(), getArrayTestNum(true));
+                }
+            });
+        }
+        polarH7.stopLogging(new Runnable() {
+            @Override
+            public void run() {
+                mSubjectList.addTestToSubject(currentSubject, polarH7.getFile(), getArrayTestNum(false));
+            }
+        });
+        mStopButton.setVisibility(View.INVISIBLE);
     }
 
     private int getArrayTestNum(boolean isMetawear) {
@@ -178,17 +226,14 @@ public class SubjectListActivity extends AppCompatActivity
 
     @Override
     public void onLogClicked(int testNum){
-        if (testNum == 0 || testNum == 2 || testNum == 4) {
-            polarH7.beginLogging(mSubjectList.getSubject(currentSubject).getIdentifier(), testNum);
+        TestSubject subject = mSubjectList.getSubject(currentSubject);
+        if (testNum == 0 || testNum == 2 || testNum == 4 || metawearDevice.beginLogging(subject.getIdentifier(), testNum)) {
+            polarH7.beginLogging(subject.getIdentifier(), testNum);
             mStopButton.setVisibility(View.VISIBLE);
             easyToast.makeToast("Logging has started");
+            testBeingLogged = testNum;
+            startTimer((testBeingLogged == 2) ? 420000 : 300000);
         }
-        else if (metawearDevice.beginLogging(mSubjectList.getSubject(currentSubject).getIdentifier(), testNum)) {
-            polarH7.beginLogging(mSubjectList.getSubject(currentSubject).getIdentifier(), testNum);
-            mStopButton.setVisibility(View.VISIBLE);
-            easyToast.makeToast("Logging has started");
-        }
-        testBeingLogged = testNum;
         subjectClickedFragment.dismiss();
     }
 
@@ -220,29 +265,19 @@ public class SubjectListActivity extends AppCompatActivity
 
         @Override
         public void onKeepTestClick() {
-            if (testBeingLogged == 1 || testBeingLogged == 3) {
-                metawearDevice.stopLogging(new Runnable() {
-                    @Override
-                    public void run() {
-                        mSubjectList.addTestToSubject(currentSubject, metawearDevice.getFile(), getArrayTestNum(true));
-                    }
-                });
-            }
-            polarH7.stopLogging(new Runnable() {
-                @Override
-                public void run() {
-                    mSubjectList.addTestToSubject(currentSubject, polarH7.getFile(), getArrayTestNum(false));
-                }
-            });
-            mStopButton.setVisibility(View.INVISIBLE);
+            keepTest();
+            timer.cancel();
         }
 
         @Override
         public void onTossItClick() {
-            metawearDevice.stopLoggingAndDestroy();
+            if (testBeingLogged == 1 || testBeingLogged == 3){
+                metawearDevice.stopLoggingAndDestroy();
+            }
             polarH7.stopLoggingAndDestroy();
             mStopButton.setVisibility(View.INVISIBLE);
             easyToast.makeToast("The log was deleted");
+            timer.cancel();
         }
     }
 
