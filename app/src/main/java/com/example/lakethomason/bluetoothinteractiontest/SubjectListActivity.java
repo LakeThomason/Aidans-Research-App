@@ -77,6 +77,7 @@ public class SubjectListActivity extends AppCompatActivity
             @Override
             public void onClick(View v) {
                 keepTestFragment.show(getFragmentManager(), "KeepTest");
+                stopTimer();
             }
         });
 

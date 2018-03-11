@@ -27,7 +27,8 @@
         <activity
             android:name=".SubjectListActivity"
             android:label="@string/title_activity_subject_list"
-            android:theme="@style/AppTheme.NoActionBar"></activity>
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity android:name=".LoginActivity"></activity>
     </application>
 
 </manifest>
