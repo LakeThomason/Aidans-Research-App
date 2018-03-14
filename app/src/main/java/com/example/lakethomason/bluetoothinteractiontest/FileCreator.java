@@ -22,7 +22,7 @@ public class FileCreator {
     private File file;
 
 
-    //directoryName is name of test subject
+    //creating log files
     public FileCreator(String subjectName, String deviceName, int testNumber) {
         dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 , "Aidans Research App/" + subjectName + "/Test" + (testNumber + 1));
@@ -36,6 +36,27 @@ public class FileCreator {
             file = new File(dir, deviceName + "_" +
                     DateFormat.getDateTimeInstance().format(new Date()) +
                     "_.csv");
+            file.createNewFile();
+            writer = new FileWriter(file);
+        }
+        catch (IOException e) {
+            Log.d("MainActivity", "IOException");
+            e.getMessage();
+            e.printStackTrace();
+        }
+    }
+
+    //creating details file
+    public FileCreator(String subjectName) {
+        dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                , "Aidans Research App/" + subjectName + "/");
+        if (!dir.exists()) {
+            if (!dir.mkdirs()) {
+                Log.d("MainActivity", "Directory creation has failed");
+            }
+        }
+        try {
+            file = new File(dir, "details.csv");
             file.createNewFile();
             writer = new FileWriter(file);
         }
@@ -63,7 +84,7 @@ public class FileCreator {
             return true;
         }
         catch (IOException e) {
-            Log.d("IOException", "File write failed: ");
+            Log.d("IOException", "File close failed: ");
             e.printStackTrace();
             return false;
         }

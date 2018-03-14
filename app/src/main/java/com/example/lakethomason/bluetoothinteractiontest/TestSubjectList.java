@@ -27,14 +27,16 @@ public class TestSubjectList {
         return mTestSubjects.get(pos);
     }
 
-    public void addSubject(String identifier, int weight, int age) {
+    public TestSubject addSubject(String identifier, int weight, int age) {
         TestSubject testSubject = new TestSubject(identifier, age, weight);
         mTestSubjects.add(testSubject);
         mNameList.add(testSubject.getIdentifier());
+        return testSubject;
     }
 
-    public void addSubjects(List<TestSubject> subjects) {
-        mTestSubjects.addAll(subjects);
+    public void addSubject(String identifier, int weight, int age, File[] files) {
+        TestSubject testSubject = addSubject(identifier, weight, age);
+        testSubject.addTests(files);
     }
 
     public void removeSubject(int pos)

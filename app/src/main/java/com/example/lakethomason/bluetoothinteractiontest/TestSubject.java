@@ -16,6 +16,7 @@ public class TestSubject implements Parcelable {
     public int mWeight;
     public String mIdentifier;
     public File[] mFileList;
+    public File mDetails;
     /*
      * mFileList structure
      * 0 PolarH7 Test
@@ -39,6 +40,7 @@ public class TestSubject implements Parcelable {
         mWeight = weight;
         mIdentifier = identifier != null ? identifier : generateName();
         mFileList = new File[7];
+        mDetails = makeDetails(identifier, age, weight);
     }
 
     TestSubject(Parcel in) {
@@ -46,13 +48,6 @@ public class TestSubject implements Parcelable {
         this.mWeight = in.readInt();
         this.mIdentifier = in.readString();
         this.mFileList = (File[]) in.readArray(TestSubject.class.getClassLoader());
-    }
-
-    TestSubject() {
-        mAge = new Random().nextInt(100);
-        mWeight = new Random().nextInt(500);
-        mIdentifier = generateName();
-        mFileList = new File[7];
     }
 
     public String generateName() {
@@ -63,6 +58,10 @@ public class TestSubject implements Parcelable {
 
     public void addTest(File file, int pos) {
         mFileList[pos] = file;
+    }
+
+    public void addTests(File[] files) {
+        mFileList = files;
     }
 
     public File getTest(int test) {
@@ -101,11 +100,23 @@ public class TestSubject implements Parcelable {
                 file.delete();
             }
         }
+        if (mDetails != null) {
+            mDetails.delete();
+        }
+
         mFileList = new File[7];
     }
 
     public String getIdentifier() {
         return mIdentifier;
+    }
+
+    private File makeDetails(String identifier, int age, int weight) {
+        FileCreator fc = new FileCreator(identifier);
+        fc.appendLineToCSV("Name,Age,Weight\n");
+        fc.appendLineToCSV(identifier + "," + age + "," + weight);
+        fc.closeFile();
+        return fc.getFile();
     }
 
     public static final Parcelable.Creator<TestSubject> CREATOR

@@ -64,6 +64,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 //Intent intent = new Intent(MainActivity.this, SubjectListActivity.class);
+                TestSubjectCrawler crawler= new TestSubjectCrawler();
+                crawler.populateTestSubjectList();
                 Intent intent = new Intent(MainActivity.this, SubjectListActivity.class);
                 startActivity(intent);
             }
