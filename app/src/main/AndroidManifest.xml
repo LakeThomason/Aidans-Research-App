@@ -17,7 +17,7 @@
         android:theme="@style/AppTheme">
         <service android:name="com.mbientlab.metawear.android.BtleService" />
 
-        <activity android:name=".MainActivity">
+        <activity android:name=".LoginActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -28,7 +28,7 @@
             android:name=".SubjectListActivity"
             android:label="@string/title_activity_subject_list"
             android:theme="@style/AppTheme.NoActionBar" />
-        <activity android:name=".LoginActivity"></activity>
+        <activity android:name=".MainActivity"></activity>
     </application>
 
 </manifest>
