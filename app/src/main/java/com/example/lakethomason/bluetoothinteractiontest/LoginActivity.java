@@ -17,6 +17,8 @@ public class LoginActivity extends AppCompatActivity {
     private TextInputEditText textInputEditTextEmail;
     private TextInputEditText textInputEditTextPassword;
 
+    public static String emailAddress;
+
     private InputValidation inputValidation;
     private DatabaseHelper databaseHelper;
 
@@ -79,6 +81,7 @@ public class LoginActivity extends AppCompatActivity {
             accountsIntent.putExtra("EMAIL", textInputEditTextEmail.getText().toString().trim());
             emptyInputEditText();
             easyToast.makeToast("Logging in");
+            emailAddress = textInputEditTextEmail.getText().toString();
             startActivity(accountsIntent);
 
 

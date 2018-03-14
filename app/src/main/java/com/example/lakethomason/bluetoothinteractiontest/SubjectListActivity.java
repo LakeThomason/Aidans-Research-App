@@ -7,16 +7,12 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
-import android.text.format.Time;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
-
-import com.mbientlab.metawear.MetaWearBoard;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -109,7 +105,7 @@ public class SubjectListActivity extends AppCompatActivity
             }
 
             public void onFinish() {
-                keepTest();
+                saveTest();
             }
         }.start();
     }
@@ -119,27 +115,28 @@ public class SubjectListActivity extends AppCompatActivity
         mTimeRemainingText.setText("Time: 0:00");
     }
 
-    private void keepTest() {
+    private void saveTest() {
+
         if (testBeingLogged == 1 || testBeingLogged == 3) {
             metawearDevice.stopLogging(new Runnable() {
                 @Override
                 public void run() {
-                    mSubjectList.addTestToSubject(currentSubject, metawearDevice.getFile(), getArrayTestNum(true));
+                    mSubjectList.addTestToSubject(currentSubject, metawearDevice.getFile(), getArrayTestNum(true, metawearDevice.getTestNum()));
                 }
             });
         }
         polarH7.stopLogging(new Runnable() {
             @Override
             public void run() {
-                mSubjectList.addTestToSubject(currentSubject, polarH7.getFile(), getArrayTestNum(false));
+                mSubjectList.addTestToSubject(currentSubject, polarH7.getFile(), getArrayTestNum(false, testBeingLogged));
             }
         });
         mStopButton.setVisibility(View.INVISIBLE);
     }
 
-    private int getArrayTestNum(boolean isMetawear) {
+    private int getArrayTestNum(boolean isMetawear, int testNum) {
         if (isMetawear) {
-            switch (testBeingLogged) {
+            switch (testNum) {
                 case 1:
                     return 1;
                 case 3:
@@ -147,7 +144,7 @@ public class SubjectListActivity extends AppCompatActivity
             }
         }
         else
-            switch (testBeingLogged) {
+            switch (testNum) {
                 case 0:
                     return 0;
                 case 1:
@@ -246,7 +243,7 @@ public class SubjectListActivity extends AppCompatActivity
         // set the type to 'email'
         emailIntent .setType("text/plain");
         // add email(s) here to whom you want to send email
-        String to[] = {"lakesainthomason@gmail.com"};
+        String to[] = {LoginActivity.emailAddress};
         emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
         // create array to store files
         ArrayList<Uri> uris = new ArrayList<Uri>();
@@ -266,7 +263,7 @@ public class SubjectListActivity extends AppCompatActivity
 
         @Override
         public void onKeepTestClick() {
-            keepTest();
+            saveTest();
             timer.cancel();
         }
 

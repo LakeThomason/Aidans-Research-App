@@ -61,6 +61,8 @@ public class Metawear implements ServiceConnection {
     private EasyToast easyToast;
     private FileCreator fileCreator;
 
+    private int testNum;
+
     private static final Metawear instance = new Metawear();
 
     public static Metawear getInstance() {
@@ -78,6 +80,8 @@ public class Metawear implements ServiceConnection {
         mSignal = activity.findViewById(R.id.signalMetawear);
         mMetawearCheckBox =  activity.findViewById(R.id.metawearCheckBox);
         mDownloadBar = activity.findViewById(R.id.downloadBar);
+
+        testNum = -1;
 
         activity.getApplicationContext().bindService(new Intent(activity, BtleService.class), this, Context.BIND_AUTO_CREATE);
         if (board != null && board.isConnected()){
@@ -129,6 +133,8 @@ public class Metawear implements ServiceConnection {
             easyToast.makeToast("You cannot log while another process is logging or downloading");
             return false;
         }
+
+        testNum = testNumber;
         mDownloadBar.setProgress(0);
         startTime = -1;
         canLog = false;
@@ -191,6 +197,7 @@ public class Metawear implements ServiceConnection {
                 fileCreator.closeFile();
                 addFileToSubject.run();
                 mDownloadBar.setProgress(0);
+                testNum = -1;
                 return null;
             }
         });
@@ -209,6 +216,7 @@ public class Metawear implements ServiceConnection {
         fileCreator.closeFile();
         fileCreator.deleteFile();
         canLog = true;
+        testNum = -1;
         return true;
     }
 
@@ -288,6 +296,10 @@ public class Metawear implements ServiceConnection {
                     .commit();
             led.play();
         }
+    }
+
+    public int getTestNum() {
+        return testNum;
     }
 
     public MetaWearBoard getBoard() {

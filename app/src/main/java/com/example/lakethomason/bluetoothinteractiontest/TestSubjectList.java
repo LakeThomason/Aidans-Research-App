@@ -29,12 +29,17 @@ public class TestSubjectList {
 
     public TestSubject addSubject(String identifier, int weight, int age) {
         TestSubject testSubject = new TestSubject(identifier, age, weight);
-        mTestSubjects.add(testSubject);
-        mNameList.add(testSubject.getIdentifier());
+        if (!mNameList.contains(testSubject.getIdentifier())) {
+            mNameList.add(testSubject.getIdentifier());
+            mTestSubjects.add(testSubject);
+        }
         return testSubject;
     }
 
     public void addSubject(String identifier, int weight, int age, File[] files) {
+        if (identifier == null || files == null){
+            return;
+        }
         TestSubject testSubject = addSubject(identifier, weight, age);
         testSubject.addTests(files);
     }
