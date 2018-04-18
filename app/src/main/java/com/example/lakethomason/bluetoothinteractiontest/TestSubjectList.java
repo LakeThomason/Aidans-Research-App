@@ -32,8 +32,10 @@ public class TestSubjectList {
         if (!mNameList.contains(testSubject.getIdentifier())) {
             mNameList.add(testSubject.getIdentifier());
             mTestSubjects.add(testSubject);
+            return testSubject;
         }
-        return testSubject;
+        else
+            return null;
     }
 
     public void addSubject(String identifier, int weight, int age, File[] files) {
@@ -41,6 +43,7 @@ public class TestSubjectList {
             return;
         }
         TestSubject testSubject = addSubject(identifier, weight, age);
+        if (testSubject != null)
         testSubject.addTests(files);
     }
 

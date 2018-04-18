@@ -1,5 +1,6 @@
 package com.example.lakethomason.bluetoothinteractiontest;
 
+import android.os.Environment;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -40,7 +41,7 @@ public class TestSubject implements Parcelable {
         mWeight = weight;
         mIdentifier = identifier != null ? identifier : generateName();
         mFileList = new File[7];
-        mDetails = makeDetails(identifier, age, weight);
+        mDetails = makeDetails(mIdentifier, age, weight);
     }
 
     TestSubject(Parcel in) {
@@ -91,6 +92,9 @@ public class TestSubject implements Parcelable {
         if (mFileList[test] != null) {
             mFileList[test].delete();
         }
+        File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                , "Aidans Research App/" + mIdentifier + "/Test" + (test + 1));
+        dir.delete();
         mFileList[test] = null;
     }
 
@@ -98,12 +102,15 @@ public class TestSubject implements Parcelable {
         for (File file : mFileList) {
             if (file != null) {
                 file.delete();
+                file.getParentFile().delete();
             }
         }
         if (mDetails != null) {
             mDetails.delete();
         }
-
+        File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                , "Aidans Research App/" + mIdentifier);
+        dir.delete();
         mFileList = new File[7];
     }
 

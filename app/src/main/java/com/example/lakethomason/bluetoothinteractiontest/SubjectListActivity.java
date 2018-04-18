@@ -57,6 +57,7 @@ public class SubjectListActivity extends AppCompatActivity
         mStopButton = findViewById(R.id.stopButton);
         mStopButton.setVisibility(View.INVISIBLE);
         mTimeRemainingText = findViewById(R.id.timeRemainingText);
+        timer = null;
 
         arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mSubjectList.mNameList);
         mSubjectListView.setAdapter(arrayAdapter);
@@ -111,12 +112,12 @@ public class SubjectListActivity extends AppCompatActivity
     }
 
     private void stopTimer(){
-        timer.cancel();
+        if (timer != null)
+            timer.cancel();
         mTimeRemainingText.setText("Time: 0:00");
     }
 
     private void saveTest() {
-
         if (testBeingLogged == 1 || testBeingLogged == 3) {
             metawearDevice.stopLogging(new Runnable() {
                 @Override
@@ -132,6 +133,16 @@ public class SubjectListActivity extends AppCompatActivity
             }
         });
         mStopButton.setVisibility(View.INVISIBLE);
+    }
+
+    private void tossTest(){
+        if (testBeingLogged == 1 || testBeingLogged == 3){
+            metawearDevice.stopLoggingAndDestroy();
+        }
+        polarH7.stopLoggingAndDestroy();
+        mStopButton.setVisibility(View.INVISIBLE);
+        easyToast.makeToast("The log was deleted");
+        stopTimer();
     }
 
     private int getArrayTestNum(boolean isMetawear, int testNum) {
@@ -194,6 +205,7 @@ public class SubjectListActivity extends AppCompatActivity
         easyToast.makeToast(mSubjectList.getSubject(currentSubject).getIdentifier() + " was removed");
         mSubjectList.removeSubject(currentSubject);
         arrayAdapter.notifyDataSetChanged();
+        tossTest();
         subjectClickedFragment.dismiss();
     }
 
@@ -269,13 +281,7 @@ public class SubjectListActivity extends AppCompatActivity
 
         @Override
         public void onTossItClick() {
-            if (testBeingLogged == 1 || testBeingLogged == 3){
-                metawearDevice.stopLoggingAndDestroy();
-            }
-            polarH7.stopLoggingAndDestroy();
-            mStopButton.setVisibility(View.INVISIBLE);
-            easyToast.makeToast("The log was deleted");
-            timer.cancel();
+            tossTest();
         }
     }
 
