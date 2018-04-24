@@ -15,19 +15,14 @@ public class AddSubjectDialogFragment extends DialogFragment {
         void onDialogPositiveClick(String age, String weight, String identifier);
         void onDialogNegativeClick();
     }
-    // Use this instance of the interface to deliver action events
     NoticeDialogListener mListener;
 
-    // Override the Fragment.onAttach() method to instantiate the NoticeDialogListener
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        // Verify that the host activity implements the callback interface
         try {
-            // Instantiate the NoticeDialogListener so we can send events to the host
             mListener = (NoticeDialogListener) context;
         } catch (ClassCastException e) {
-            // The activity doesn't implement the interface, throw exception
             throw new ClassCastException(context.toString()
                     + " must implement NoticeDialogListener");
         }
@@ -40,8 +35,8 @@ public class AddSubjectDialogFragment extends DialogFragment {
         final EditText weightEditText = dialog.findViewById(R.id.weightEditText);
         final EditText ageEditText = dialog.findViewById(R.id.ageEditText);
         final EditText identifierEditText = dialog.findViewById(R.id.identifierEditText);
-        // Use the Builder class for convenient dialog construction
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+
         builder.setMessage("Enter the required attributes *")
                 .setPositiveButton("Add Subject", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
@@ -57,7 +52,6 @@ public class AddSubjectDialogFragment extends DialogFragment {
                     }
                 })
                 .setView(dialog);
-        // Create the AlertDialog object and return it
         return builder.create();
     }
 }

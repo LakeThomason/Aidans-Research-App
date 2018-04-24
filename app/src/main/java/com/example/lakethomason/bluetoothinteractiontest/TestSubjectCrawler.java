@@ -58,7 +58,10 @@ public class TestSubjectCrawler {
         }
         layer--;
         if (layer == 1 && details != null) {
-            testSubjectList.addSubject(details[0], Integer.valueOf(details[1]), Integer.valueOf(details[2]), tests);
+            testSubjectList.addSubject(details[0]
+                    , Integer.valueOf(details[1])
+                    , Integer.valueOf(details[2])
+                    , tests);
             details = null;
             tests = new File[7];
         }

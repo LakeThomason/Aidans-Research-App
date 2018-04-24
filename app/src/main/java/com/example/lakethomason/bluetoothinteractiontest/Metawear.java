@@ -161,7 +161,6 @@ public class Metawear implements ServiceConnection {
             public Void then(Task<Route> task) throws Exception {
                 sensorFusion.eulerAngles().start();
                 sensorFusion.start();
-                //logging.start(true);
                 return null;
             }
         });

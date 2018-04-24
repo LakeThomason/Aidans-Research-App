@@ -124,9 +124,11 @@ public class PolarH7 {
     }
 
     public void stopLoggingAndDestroy() {
-        log = false;
-        fileCreator.closeFile();
-        fileCreator.deleteFile();
+        if (log) {
+            log = false;
+            fileCreator.closeFile();
+            fileCreator.deleteFile();
+        }
     }
 
     public File getFile() {
@@ -140,6 +142,9 @@ public class PolarH7 {
                 mHeartRateText.setText(String.valueOf(value));
                 if (value == 0) {
                     mHeartRateText.setVisibility(View.INVISIBLE);
+                }
+                else {
+                    updatePolarCheckBox(true);
                 }
             }
         });
