@@ -100,8 +100,5 @@ public class FileCreator {
         return this.file;
     }
 
-    public File getDir() {
-        return this.dir;
-    }
 
 }

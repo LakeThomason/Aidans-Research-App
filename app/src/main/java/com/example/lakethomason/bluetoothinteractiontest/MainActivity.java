@@ -143,7 +143,8 @@ public class MainActivity extends AppCompatActivity {
                 , Manifest.permission.WRITE_EXTERNAL_STORAGE
                 , Manifest.permission.ACCESS_COARSE_LOCATION
                 , Manifest.permission.BLUETOOTH
-                , Manifest.permission.BLUETOOTH_ADMIN};
+                , Manifest.permission.BLUETOOTH_ADMIN
+                , Manifest.permission.READ_PHONE_STATE};
         ActivityCompat.requestPermissions(MainActivity.this, permissions, ALL_PERMISSIONS);
     }
 

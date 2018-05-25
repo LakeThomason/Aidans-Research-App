@@ -43,14 +43,14 @@ public class TestSubjectCrawler {
     private void recurseFiles(File[] files) {
         layer++;
         for (File file : files) {
-            if (file.isDirectory()) {
+            if (file.isDirectory()) { // It's a directory
                 currFileNum = checkTestNum(file);
                 recurseFiles(file.listFiles());
-            } else {
-                if (file.getName().equals("details.csv")){
+            } else { // It's a file
+                if (file.getName().equals("details.csv")){ // It's the details.csv file
                     details = getTestSubjectDetails(file);
                 }
-                else {
+                else { // It's a test file
                     tests[currFileNum] = file;
                     currFileNum++;
                 }
@@ -61,7 +61,7 @@ public class TestSubjectCrawler {
             testSubjectList.addSubject(details[0]
                     , Integer.valueOf(details[1])
                     , Integer.valueOf(details[2])
-                    , tests);
+                    , tests); // Remake the test subject
             details = null;
             tests = new File[7];
         }
@@ -70,16 +70,14 @@ public class TestSubjectCrawler {
     private String[] getTestSubjectDetails(File file) {
         BufferedReader br = null;
         String line = "";
-        String cvsSplitBy = ",";
+        String csvSplitBy = ",";
 
         try {
-
             br = new BufferedReader(new FileReader(file));
             br.readLine();
             if ((line = br.readLine()) != null) {
-                return line.split(cvsSplitBy);
+                return line.split(csvSplitBy); // split each element of the line by csvSplitBy
             }
-
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {

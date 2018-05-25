@@ -255,10 +255,10 @@ public class SubjectListActivity extends AppCompatActivity
         // set the type to 'email'
         emailIntent .setType("text/plain");
         // add email(s) here to whom you want to send email
-        String to[] = {LoginActivity.emailAddress};
+        String to = "mcguinnea@sou.edu";
         emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
         // create array to store files
-        ArrayList<Uri> uris = new ArrayList<Uri>();
+        ArrayList<Uri> uris = new ArrayList<Uri>(); // URI: Uniform Resource Identifier
         for (File file : fileList){
             // convert file to uri
             if (file != null) {
